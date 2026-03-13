@@ -367,6 +367,23 @@ export function startServer(config: ServerConfig) {
         url.pathname = mount.restPath;
       }
 
+      // Allow unauthenticated GET /opencode/global/health so frontend health check works before token is set
+      if (request.method === "GET" && (url.pathname === "/opencode/global/health" || url.pathname === "/opencode/global/health/")) {
+        const workspace = config.workspaces[0];
+        const baseUrl = workspace?.baseUrl?.trim();
+        if (baseUrl) {
+          try {
+            proxyService = "opencode";
+            proxyBaseUrl = baseUrl;
+            const response = await proxyOpencodeRequest({ request, url, workspace, proxyPath: url.pathname });
+            return finalize(response);
+          } catch {
+            // fall through to synthetic healthy
+          }
+        }
+        return finalize(jsonResponse({ healthy: true, version: "0.0.0" }));
+      }
+
       if (url.pathname === "/opencode" || url.pathname.startsWith("/opencode/")) {
         authMode = "client";
         proxyBaseUrl = config.workspaces[0]?.baseUrl?.trim() || undefined;
