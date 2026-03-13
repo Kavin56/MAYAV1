@@ -3,7 +3,8 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, onMou
 import { formatBytes, formatRelativeTime, isTauriRuntime } from "../utils";
 
 import Button from "../components/button";
-import { CircleAlert, HardDrive, MessageCircle, PlugZap, RefreshCcw, Smartphone, X, Zap } from "lucide-solid";
+import TextInput from "../components/text-input";
+import { CircleAlert, Globe, HardDrive, MessageCircle, PlugZap, RefreshCcw, Smartphone, X, Zap } from "lucide-solid";
 import type { OpencodeConnectStatus, ProviderListItem, SettingsTab, StartupPreference } from "../types";
 import type {
   OpenworkAuditEntry,
@@ -75,6 +76,10 @@ export type SettingsViewProps = {
   editModelVariant: () => void;
   themeMode: "light" | "dark" | "system";
   setThemeMode: (value: "light" | "dark" | "system") => void;
+  defaultRemoteWorkerUrl: string;
+  defaultRemoteWorkerToken: string;
+  setDefaultRemoteWorkerUrl: (value: string) => void;
+  setDefaultRemoteWorkerToken: (value: string) => void;
   updateAutoCheck: boolean;
   toggleUpdateAutoCheck: () => void;
   updateAutoDownload: boolean;
@@ -785,6 +790,41 @@ export default function SettingsView(props: SettingsViewProps) {
 
               <div class="text-xs text-gray-8">
                 System mode follows your OS preference automatically.
+              </div>
+            </div>
+
+            <div class="bg-gray-2/30 border border-gray-7/60 rounded-2xl p-5 space-y-4">
+              <div class="flex items-center gap-2">
+                <Globe size={16} class="text-gray-11" />
+                <div class="text-sm font-medium text-gray-12">Remote connection</div>
+              </div>
+              <div class="text-xs text-gray-9">
+                Set a default OpenWork server URL (e.g. your RunPod ngrok URL). It will pre-fill when you add a remote worker from the dashboard.
+              </div>
+              <div class="grid gap-3">
+                <TextInput
+                  label="Remote worker URL"
+                  value={props.defaultRemoteWorkerUrl}
+                  onInput={(e) => props.setDefaultRemoteWorkerUrl(e.currentTarget.value)}
+                  placeholder="https://unameliorative-regretably-kimberly.ngrok-free.dev"
+                  hint="Your public ngrok URL pointing to the OpenWork server (e.g. RunPod)."
+                  disabled={props.busy}
+                />
+                <label class="block">
+                  <div class="mb-1 text-xs font-medium text-gray-11">Access token (optional)</div>
+                  <input
+                    type="password"
+                    value={props.defaultRemoteWorkerToken}
+                    onInput={(e) => props.setDefaultRemoteWorkerToken(e.currentTarget.value)}
+                    placeholder="Paste your token"
+                    disabled={props.busy}
+                    class="w-full rounded-xl bg-gray-2/60 px-3 py-2 text-sm text-gray-12 placeholder:text-gray-10 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] focus:outline-none focus:ring-2 focus:ring-gray-6/20"
+                  />
+                  <div class="mt-1 text-xs text-gray-10">Optional. Saved locally and used when adding a remote worker.</div>
+                </label>
+              </div>
+              <div class="text-xs text-gray-8">
+                From the dashboard, use <span class="font-medium">Add Remote Worker...</span> to connect; the URL above will be pre-filled.
               </div>
             </div>
           </div>

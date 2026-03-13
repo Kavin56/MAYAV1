@@ -164,7 +164,7 @@ export default function CreateRemoteWorkspaceModal(props: {
               props.onConfirm({
                 openworkHostUrl: openworkHostUrl().trim(),
                 openworkToken: openworkToken().trim(),
-                directory: directory().trim() ? directory().trim() : null,
+                directory: directory().trim() ? directory().trim() : "/workspace",
                 displayName: displayName().trim() ? displayName().trim() : null,
               })
             }

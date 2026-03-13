@@ -51,6 +51,8 @@ import {
 import { clearPerfLogs, finishPerf, perfNow, recordPerfLog } from "./lib/perf-log";
 import {
   DEFAULT_MODEL,
+  DEFAULT_REMOTE_WORKER_TOKEN_PREF_KEY,
+  DEFAULT_REMOTE_WORKER_URL_PREF_KEY,
   HIDE_TITLEBAR_PREF_KEY,
   MCP_QUICK_CONNECT,
   MODEL_PREF_KEY,
@@ -709,11 +711,36 @@ export default function App() {
   const [lastKnownConfigSnapshot, setLastKnownConfigSnapshot] = createSignal("");
   const [developerMode, setDeveloperMode] = createSignal(false);
   const [documentVisible, setDocumentVisible] = createSignal(true);
+  const [defaultRemoteWorkerUrl, setDefaultRemoteWorkerUrlState] = createSignal("");
+  const [defaultRemoteWorkerToken, setDefaultRemoteWorkerTokenState] = createSignal("");
 
   createEffect(() => {
     if (developerMode()) return;
     clearPerfLogs();
   });
+
+  const setDefaultRemoteWorkerUrl = (value: string) => {
+    setDefaultRemoteWorkerUrlState(value);
+    if (typeof window !== "undefined") {
+      try {
+        if (value.trim()) window.localStorage.setItem(DEFAULT_REMOTE_WORKER_URL_PREF_KEY, value.trim());
+        else window.localStorage.removeItem(DEFAULT_REMOTE_WORKER_URL_PREF_KEY);
+      } catch {
+        // ignore
+      }
+    }
+  };
+  const setDefaultRemoteWorkerToken = (value: string) => {
+    setDefaultRemoteWorkerTokenState(value);
+    if (typeof window !== "undefined") {
+      try {
+        if (value.trim()) window.localStorage.setItem(DEFAULT_REMOTE_WORKER_TOKEN_PREF_KEY, value.trim());
+        else window.localStorage.removeItem(DEFAULT_REMOTE_WORKER_TOKEN_PREF_KEY);
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   const [selectedSessionId, setSelectedSessionId] = createSignal<string | null>(
     null
@@ -2590,6 +2617,17 @@ export default function App() {
     };
   });
 
+  const defaultRemoteWorkspaceInitialValues = createMemo((): RemoteWorkspaceDefaults | undefined => {
+    const url = defaultRemoteWorkerUrl().trim();
+    if (!url) return undefined;
+    return {
+      openworkHostUrl: url,
+      openworkToken: defaultRemoteWorkerToken().trim() || undefined,
+      directory: undefined,
+      displayName: undefined,
+    };
+  });
+
   const openRenameWorkspace = (workspaceId: string) => {
     const workspace = workspaceStore.workspaces().find((item) => item.id === workspaceId) ?? null;
     if (!workspace) return;
@@ -4150,6 +4188,17 @@ export default function App() {
       setStartupPreference(startupPref);
     }
 
+    if (typeof window !== "undefined") {
+      try {
+        const savedUrl = window.localStorage.getItem(DEFAULT_REMOTE_WORKER_URL_PREF_KEY);
+        const savedToken = window.localStorage.getItem(DEFAULT_REMOTE_WORKER_TOKEN_PREF_KEY);
+        if (savedUrl != null) setDefaultRemoteWorkerUrlState(savedUrl);
+        if (savedToken != null) setDefaultRemoteWorkerTokenState(savedToken);
+      } catch {
+        // ignore
+      }
+    }
+
     const unsubscribeTheme = subscribeToSystemTheme((isDark) => {
       if (themeMode() !== "system") return;
       applyThemeMode(isDark ? "dark" : "light");
@@ -5133,6 +5182,10 @@ export default function App() {
       },
       themeMode: themeMode(),
       setThemeMode,
+      defaultRemoteWorkerUrl: defaultRemoteWorkerUrl(),
+      defaultRemoteWorkerToken: defaultRemoteWorkerToken(),
+      setDefaultRemoteWorkerUrl,
+      setDefaultRemoteWorkerToken,
       pendingPermissions: pendingPermissions(),
       events: events(),
       workspaceDebugEvents: workspaceStore.workspaceDebugEvents(),
@@ -5595,7 +5648,7 @@ export default function App() {
           setDeepLinkRemoteWorkspaceDefaults(null);
         }}
         onConfirm={(input) => workspaceStore.createRemoteWorkspaceFlow(input)}
-        initialValues={deepLinkRemoteWorkspaceDefaults() ?? undefined}
+        initialValues={deepLinkRemoteWorkspaceDefaults() ?? defaultRemoteWorkspaceInitialValues() ?? undefined}
         submitting={
           busy() &&
           (busyLabel() === "status.creating_workspace" || busyLabel() === "status.connecting")

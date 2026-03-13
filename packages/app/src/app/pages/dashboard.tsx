@@ -238,6 +238,10 @@ export type DashboardViewProps = {
   toggleUpdateAutoDownload: () => void;
   themeMode: "light" | "dark" | "system";
   setThemeMode: (value: "light" | "dark" | "system") => void;
+  defaultRemoteWorkerUrl: string;
+  defaultRemoteWorkerToken: string;
+  setDefaultRemoteWorkerUrl: (value: string) => void;
+  setDefaultRemoteWorkerToken: (value: string) => void;
   updateStatus: {
     state: string;
     lastCheckedAt?: number | null;
@@ -1508,6 +1512,10 @@ export default function DashboardView(props: DashboardViewProps) {
                   toggleUpdateAutoDownload={props.toggleUpdateAutoDownload}
                   themeMode={props.themeMode}
                   setThemeMode={props.setThemeMode}
+                  defaultRemoteWorkerUrl={props.defaultRemoteWorkerUrl}
+                  defaultRemoteWorkerToken={props.defaultRemoteWorkerToken}
+                  setDefaultRemoteWorkerUrl={props.setDefaultRemoteWorkerUrl}
+                  setDefaultRemoteWorkerToken={props.setDefaultRemoteWorkerToken}
                   updateStatus={props.updateStatus}
                   updateEnv={props.updateEnv}
                   appVersion={props.appVersion}
