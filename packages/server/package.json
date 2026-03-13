@@ -4,7 +4,7 @@
   "description": "Filesystem-backed API for MAYA remote clients",
   "type": "module",
   "bin": {
-    "maya-server": "dist/bin/maya-server"
+    "maya-server": "dist/cli.js"
   },
   "scripts": {
     "dev": "bun src/cli.ts",

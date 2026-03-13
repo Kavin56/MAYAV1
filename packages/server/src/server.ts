@@ -454,6 +454,10 @@ export function startServer(config: ServerConfig) {
 
   const server = Bun.serve(serverOptions);
 
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server.ts:bind',message:'server bound',data:{host:config.host,port:server.port},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
+
   return server;
 }
 

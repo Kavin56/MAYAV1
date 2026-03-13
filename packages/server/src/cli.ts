@@ -21,6 +21,9 @@ const logger = createServerLogger(config);
 const server = startServer(config);
 
 const url = `http://${config.host}:${server.port}`;
+// #region agent log
+fetch('http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'cli.ts:listen',message:'MAYA server listening',data:{url},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+// #endregion
 logger.log("info", `MAYA server listening on ${url}`);
 
 if (config.tokenSource === "generated") {
