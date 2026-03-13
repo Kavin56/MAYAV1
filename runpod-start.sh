@@ -27,8 +27,19 @@ if [ -z "${NGROK_AUTHTOKEN:-}" ]; then
 fi
 echo "[MAYA] NGROK_AUTHTOKEN is set. Proceeding..."
 
-# Write OpenWork client token for GET /token (set OPENWORK_TOKEN in .env to expose it)
-python3 -c "import json,os; open('tmp/token.json','w').write(json.dumps({'token': os.environ.get('OPENWORK_TOKEN','')}))" 2>/dev/null || echo '{"token":""}' > tmp/token.json
+# Will be filled after OpenWork starts (from log or OPENWORK_TOKEN in .env)
+echo '{"token":""}' > tmp/token.json
+
+extract_openwork_token() {
+  local token=""
+  if [ -n "${OPENWORK_TOKEN:-}" ]; then
+    token="$OPENWORK_TOKEN"
+  elif [ -f /tmp/openwork.log ]; then
+    token=$(grep "Client token:" /tmp/openwork.log 2>/dev/null | tail -1 | sed 's/.*Client token: *//' | tr -d '\r\n')
+  fi
+  OWT="$token" python3 -c "import json,os; open('tmp/token.json','w').write(json.dumps({'token': os.environ.get('OWT','')}))" 2>/dev/null || true
+  [ -n "$token" ] && echo "[MAYA] OpenWork client token found (GET /token to use it)." || echo "[MAYA] No client token yet; check /tmp/openwork.log"
+}
 
 ensure_ngrok() {
   command -v ngrok >/dev/null 2>&1 && return 0
@@ -118,7 +129,8 @@ start_ngrok() {
 
 trap 'kill ${NGROK_PID:-} ${CADDY_PID:-} ${OPENWORK_PID:-} ${MAYA_PID:-} 2>/dev/null || true' EXIT
 start_openwork
-sleep 3
+sleep 5
+extract_openwork_token
 start_python
 sleep 2
 start_proxy
