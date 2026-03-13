@@ -4,6 +4,11 @@
 echo "[MAYA] runpod-start.sh starting..."
 set -e
 
+# Always run from script directory so tmp/ and paths are correct
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" && pwd)"
+cd "$SCRIPT_DIR"
+echo "[MAYA] Working directory: $(pwd)"
+
 echo "[MAYA] Loading .env..."
 if [ -f .env ]; then
   set -a
@@ -83,14 +88,16 @@ start_python() {
 }
 
 start_proxy() {
+  mkdir -p tmp
+  REPO_ROOT="$(pwd)"
+  # Caddy: use absolute path so it works regardless of cwd
   ensure_caddy
   echo "[MAYA] Starting proxy on 0.0.0.0:${PUBLIC_PORT}..."
-  mkdir -p tmp
   cat > tmp/Caddyfile <<EOF
 0.0.0.0:${PUBLIC_PORT} {
   handle /token {
     rewrite * /token.json
-    file_server root tmp
+    file_server root ${REPO_ROOT}/tmp
   }
   handle /maya/* {
     uri strip_prefix /maya
@@ -101,7 +108,36 @@ start_proxy() {
   }
 }
 EOF
-  caddy run --config tmp/Caddyfile --adapter caddyfile >/tmp/caddy.log 2>&1 &
+  caddy run --config "${REPO_ROOT}/tmp/Caddyfile" --adapter caddyfile >/tmp/caddy.log 2>&1 &
+  CADDY_PID=$!
+}
+
+start_python_proxy() {
+  echo "[MAYA] Starting Python fallback proxy on 0.0.0.0:${PUBLIC_PORT}..."
+  python3 -c "
+import http.server, urllib.request, json, os
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.startswith('/token'):
+            try:
+                with open('tmp/token.json') as f: body = f.read()
+                self.send_response(200); self.send_header('Content-type','application/json'); self.end_headers()
+                self.wfile.write(body.encode())
+            except: self.send_error(500)
+            return
+        url = ('http://127.0.0.1:${MAYA_PYTHON_PORT}' + self.path[5:]) if self.path.startswith('/maya') else 'http://127.0.0.1:${OPENWORK_PORT}' + self.path
+        try:
+            r = urllib.request.urlopen(url, timeout=30)
+            self.send_response(r.status); [self.send_header(k,v) for k,v in r.getheaders()]; self.end_headers()
+            self.wfile.write(r.read())
+        except Exception as e: self.send_error(502, str(e))
+    def do_POST(self): self.do_GET()
+    def do_PUT(self): self.do_GET()
+    def do_PATCH(self): self.do_GET()
+    def do_DELETE(self): self.do_GET()
+    def log_message(self,*a): pass
+http.server.HTTPServer(('0.0.0.0', ${PUBLIC_PORT}), H).serve_forever()
+" >/tmp/python-proxy.log 2>&1 &
   CADDY_PID=$!
 }
 
@@ -138,7 +174,13 @@ sleep 2
 start_proxy
 sleep 2
 wait_for_port ${OPENWORK_PORT} "OpenWork" || exit 1
-wait_for_port ${PUBLIC_PORT} "Caddy proxy" || { echo "[MAYA] Fix Caddy (see above), then run: ngrok http ${PUBLIC_PORT} --authtoken \$NGROK_AUTHTOKEN"; exit 1; }
+if ! wait_for_port ${PUBLIC_PORT} "Caddy proxy"; then
+  echo "[MAYA] Caddy did not start; trying Python proxy on ${PUBLIC_PORT}..."
+  kill ${CADDY_PID:-} 2>/dev/null || true
+  start_python_proxy
+  sleep 2
+  wait_for_port ${PUBLIC_PORT} "Python proxy" || { echo "[MAYA] Proxy failed. See /tmp/caddy.log and /tmp/python-proxy.log"; exit 1; }
+fi
 start_ngrok
 echo "[MAYA] Started. OpenWork: 127.0.0.1:${OPENWORK_PORT} | FastAPI: 127.0.0.1:${MAYA_PYTHON_PORT} | Public: $(cat tmp/public-url.txt 2>/dev/null)"
 echo "[MAYA] Logs: /tmp/openwork.log /tmp/maya-fastapi.log /tmp/caddy.log /tmp/ngrok.log"
