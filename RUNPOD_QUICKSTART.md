@@ -1,6 +1,6 @@
 # RunPod: Run MAYA-V1 with ngrok
 
-Use this on a **new RunPod** (SSH or Jupyter terminal). Your app will be reachable at your ngrok URL (e.g. `https://unameliorative-regretably-kimberly.ngrok-free.dev`).
+Use this on a **new RunPod** (SSH or Jupyter terminal). The script runs the **MAYA server (Node)** on port 8787 and exposes it with ngrok so the **frontend app** can connect (OpenCode + MAYA both show connected). See **[CONNECT_FRONTEND.md](./CONNECT_FRONTEND.md)** for how to set the ngrok URL and token in the app.
 
 ## 1. System packages
 

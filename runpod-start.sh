@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# MAYA-V1 RunPod startup script
-# Run this after: clone repo, then chmod +x runpod-start.sh && ./runpod-start.sh
-# Optional env: RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID, NGROK_AUTHTOKEN, NGROK_DOMAIN
+# MAYA-V1 RunPod: run MAYA server (Node) + ngrok so frontend can connect.
+# Frontend uses: MAYA server URL = ngrok URL, token = MAYA_TOKEN (or printed).
+# OpenCode + MAYA status in the app both work when you connect to this ngrok URL.
 
 set -e
 
-echo "🚀 MAYA-V1 RunPod startup"
+MAYA_PORT=8787
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT_DIR"
 
-# Load .env if present (do not commit .env with secrets)
+echo "🚀 MAYA-V1 RunPod startup (frontend + ngrok)"
+
+# Load .env
 if [ -f .env ]; then
   echo "📁 Loading .env..."
   set -a
@@ -16,57 +20,76 @@ if [ -f .env ]; then
   set +a
 fi
 
-# Create logs dir for maya_server.py
+# Token for frontend (set in .env or we generate and print)
+MAYA_TOKEN="${MAYA_TOKEN:-}"
+if [ -z "$MAYA_TOKEN" ]; then
+  MAYA_TOKEN=$(openssl rand -hex 24 2>/dev/null || echo "runpod-$(date +%s)")
+  echo "📌 Generated MAYA_TOKEN (save for frontend): $MAYA_TOKEN"
+fi
+
 mkdir -p logs
 
-# Determine which server we'll run (for ngrok port)
-USE_FASTAPI=
-if [ -f src/main.py ]; then
-  first_line=$(head -1 src/main.py)
-  if echo "$first_line" | grep -qE '^#!.*python|^#!/usr/bin/env python|^"""|^import |^from '; then
-    [ -f requirements.txt ] && USE_FASTAPI=1
-  fi
-fi
-MAYA_PORT=$([ -n "$USE_FASTAPI" ] && echo 8000 || echo 3000)
-
-# Optional: start ngrok to expose the server (use new token/URL if you hit limits)
+# ─── ngrok (expose MAYA server for frontend) ───
 if [ -n "$NGROK_AUTHTOKEN" ]; then
   if command -v ngrok >/dev/null 2>&1; then
-    PORT=${MAYA_PORT}
-    echo "🔗 Starting ngrok for port $PORT..."
-    # Use --url (not deprecated --domain); --pooling-enabled when using same URL on multiple Pods
+    echo "🔗 Starting ngrok for port $MAYA_PORT..."
     if [ -n "$NGROK_DOMAIN" ]; then
       NGROK_URL="https://${NGROK_DOMAIN#https://}"
-      ngrok http "$PORT" --authtoken "$NGROK_AUTHTOKEN" --url "$NGROK_URL" --pooling-enabled &
+      ngrok http "$MAYA_PORT" --authtoken "$NGROK_AUTHTOKEN" --url "$NGROK_URL" --pooling-enabled &
     else
-      ngrok http "$PORT" --authtoken "$NGROK_AUTHTOKEN" &
+      ngrok http "$MAYA_PORT" --authtoken "$NGROK_AUTHTOKEN" &
     fi
-    NGROK_PID=$!
+    sleep 2
   else
-    echo "⚠️ NGROK_AUTHTOKEN set but ngrok not installed; install from https://ngrok.com/download"
+    echo "⚠️ ngrok not installed; install from https://ngrok.com/download"
   fi
 fi
 
-if [ -n "$USE_FASTAPI" ]; then
-  if [ ! -d venv ]; then
-    echo "📦 Creating venv..."
-    python3 -m venv venv
-  fi
-  source venv/bin/activate
-  pip install -q -r requirements.txt
-  echo "🌐 Starting FastAPI (port 8000)..."
-  python3 src/main.py &
-  APP_PID=$!
-  echo "✅ MAYA FastAPI: http://localhost:8000"
-  echo "   Health: http://localhost:8000/health"
-  echo "   RunPod status: http://localhost:8000/api/runpod/status"
-  wait $APP_PID
-else
-  echo "🌐 Starting MAYA HTTP server (port 3000)..."
-  python3 maya_server.py &
-  APP_PID=$!
-  echo "✅ MAYA server: http://localhost:3000"
-  echo "   Health: http://localhost:3000/health"
-  echo "   RunPod status: http://localhost:3000/api/runpod/status"
-  wait $APP_PID
+# ─── MAYA server (Node) – frontend talks to this via ngrok ───
+echo "📦 Building MAYA server..."
+if ! command -v pnpm >/dev/null 2>&1; then
+  npm install -g pnpm
 fi
+pnpm install
+pnpm --filter maya-server build
+
+# Workspace: current dir on RunPod
+WORKSPACE_DIR="${MAYA_WORKSPACE:-$ROOT_DIR}"
+# Optional: start OpenCode so "OpenCode" shows connected in the app
+OPENCODE_URL=""
+if command -v opencode >/dev/null 2>&1; then
+  echo "🔧 Starting OpenCode on 4096..."
+  opencode serve --host 127.0.0.1 --port 4096 &
+  sleep 2
+  OPENCODE_URL="http://127.0.0.1:4096"
+fi
+
+echo "🌐 Starting MAYA server on port $MAYA_PORT..."
+SERVER_ARGS=(
+  --host 0.0.0.0
+  --port "$MAYA_PORT"
+  --workspace "$WORKSPACE_DIR"
+  --token "$MAYA_TOKEN"
+  --cors "*"
+)
+[ -n "$OPENCODE_URL" ] && SERVER_ARGS+=(--opencode-base-url "$OPENCODE_URL" --opencode-directory "$WORKSPACE_DIR")
+
+(cd packages/server && node dist/cli.js "${SERVER_ARGS[@]}") &
+APP_PID=$!
+
+echo ""
+echo "✅ MAYA server: http://0.0.0.0:$MAYA_PORT"
+echo "   Health: http://localhost:$MAYA_PORT/health"
+echo "   Status: http://localhost:$MAYA_PORT/status"
+if [ -n "$NGROK_DOMAIN" ]; then
+  PUBLIC_URL="https://${NGROK_DOMAIN#https://}"
+  echo ""
+  echo "━━━ Connect your frontend ━━━"
+  echo "   MAYA server URL: $PUBLIC_URL"
+  echo "   Token: $MAYA_TOKEN"
+  echo "   In the app: Settings → Remote / Advanced → set URL to $PUBLIC_URL and token above."
+  echo "   Then OpenCode and MAYA will show connected."
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
+
+wait $APP_PID
