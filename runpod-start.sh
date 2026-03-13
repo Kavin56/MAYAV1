@@ -184,11 +184,6 @@ if ! wait_for_port ${PUBLIC_PORT} "Caddy proxy"; then
   sleep 3
   wait_for_port ${PUBLIC_PORT} "Python proxy" || { echo "[MAYA] Proxy failed. See /tmp/caddy.log and /tmp/python-proxy.log"; exit 1; }
 fi
-# Final check: something must be listening on 8080 for ngrok
-if ! curl -s -o /dev/null --connect-timeout 2 "http://127.0.0.1:${PUBLIC_PORT}/" 2>/dev/null; then
-  echo "[MAYA] ERROR: Nothing responding on ${PUBLIC_PORT}. Start proxy manually or check logs."
-  exit 1
-fi
 start_ngrok
 echo "[MAYA] Started. OpenWork: 127.0.0.1:${OPENWORK_PORT} | FastAPI: 127.0.0.1:${MAYA_PYTHON_PORT} | Public: $(cat tmp/public-url.txt 2>/dev/null)"
 echo "[MAYA] Logs: /tmp/openwork.log /tmp/maya-fastapi.log /tmp/caddy.log /tmp/ngrok.log"
