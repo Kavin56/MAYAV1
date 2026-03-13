@@ -30,6 +30,7 @@ export default function CreateRemoteWorkspaceModal(props: {
   confirmLabel?: string;
 }) {
   let inputRef: HTMLInputElement | undefined;
+  let directoryInputRef: HTMLInputElement | undefined;
   const translate = (key: string) => t(key, currentLocale());
 
   const [openworkHostUrl, setOpenworkHostUrl] = createSignal("");
@@ -50,9 +51,17 @@ export default function CreateRemoteWorkspaceModal(props: {
     return openworkHostUrl().trim().length > 0;
   });
 
+  const useSimplifiedMode = createMemo(() => {
+    const url = (props.initialValues?.openworkHostUrl ?? "").trim();
+    return url.length > 0;
+  });
+
   createEffect(() => {
     if (props.open) {
-      requestAnimationFrame(() => inputRef?.focus());
+      requestAnimationFrame(() => {
+        if (useSimplifiedMode()) directoryInputRef?.focus();
+        else inputRef?.focus();
+      });
     }
   });
 
@@ -95,41 +104,50 @@ export default function CreateRemoteWorkspaceModal(props: {
           </div>
         </div>
 
+        <Show when={useSimplifiedMode()}>
+          <div class="rounded-xl border border-green-7/30 bg-green-2/20 px-3 py-2 text-xs text-green-12">
+            Using saved connection: <span class="font-mono truncate inline-block max-w-[280px] align-bottom" title={openworkHostUrl()}>{openworkHostUrl()}</span>
+          </div>
+        </Show>
+
         <div class="space-y-4">
-          <TextInput
-            ref={inputRef}
-            label={translate("dashboard.openwork_host_label")}
-            placeholder={translate("dashboard.openwork_host_placeholder")}
-            value={openworkHostUrl()}
-            onInput={(event) => setOpenworkHostUrl(event.currentTarget.value)}
-            hint={translate("dashboard.openwork_host_hint")}
-            disabled={submitting()}
-          />
+          <Show when={!useSimplifiedMode()}>
+            <TextInput
+              ref={inputRef}
+              label={translate("dashboard.openwork_host_label")}
+              placeholder={translate("dashboard.openwork_host_placeholder")}
+              value={openworkHostUrl()}
+              onInput={(event) => setOpenworkHostUrl(event.currentTarget.value)}
+              hint={translate("dashboard.openwork_host_hint")}
+              disabled={submitting()}
+            />
 
-          <label class="block">
-            <div class="mb-1 text-xs font-medium text-gray-11">{translate("dashboard.openwork_host_token_label")}</div>
-            <div class="flex items-center gap-2">
-              <input
-                type={openworkTokenVisible() ? "text" : "password"}
-                value={openworkToken()}
-                onInput={(event) => setOpenworkToken(event.currentTarget.value)}
-                placeholder={translate("dashboard.openwork_host_token_placeholder")}
-                disabled={submitting()}
-                class="w-full rounded-xl bg-gray-2/60 px-3 py-2 text-sm text-gray-12 placeholder:text-gray-10 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] focus:outline-none focus:ring-2 focus:ring-gray-6/20"
-              />
-              <Button
-                variant="outline"
-                class="text-xs h-9 px-3 shrink-0"
-                onClick={() => setOpenworkTokenVisible((prev) => !prev)}
-                disabled={submitting()}
-              >
-                {openworkTokenVisible() ? translate("common.hide") : translate("common.show")}
-              </Button>
-            </div>
-            <div class="mt-1 text-xs text-gray-10">{translate("dashboard.openwork_host_token_hint")}</div>
-          </label>
+            <label class="block">
+              <div class="mb-1 text-xs font-medium text-gray-11">{translate("dashboard.openwork_host_token_label")}</div>
+              <div class="flex items-center gap-2">
+                <input
+                  type={openworkTokenVisible() ? "text" : "password"}
+                  value={openworkToken()}
+                  onInput={(event) => setOpenworkToken(event.currentTarget.value)}
+                  placeholder={translate("dashboard.openwork_host_token_placeholder")}
+                  disabled={submitting()}
+                  class="w-full rounded-xl bg-gray-2/60 px-3 py-2 text-sm text-gray-12 placeholder:text-gray-10 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] focus:outline-none focus:ring-2 focus:ring-gray-6/20"
+                />
+                <Button
+                  variant="outline"
+                  class="text-xs h-9 px-3 shrink-0"
+                  onClick={() => setOpenworkTokenVisible((prev) => !prev)}
+                  disabled={submitting()}
+                >
+                  {openworkTokenVisible() ? translate("common.hide") : translate("common.show")}
+                </Button>
+              </div>
+              <div class="mt-1 text-xs text-gray-10">{translate("dashboard.openwork_host_token_hint")}</div>
+            </label>
+          </Show>
 
           <TextInput
+            ref={directoryInputRef}
             label={translate("dashboard.remote_directory_label")}
             placeholder={translate("dashboard.remote_directory_placeholder")}
             value={directory()}

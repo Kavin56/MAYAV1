@@ -324,6 +324,8 @@ export default function SettingsView(props: SettingsViewProps) {
   const [providerConnectError, setProviderConnectError] = createSignal<string | null>(null);
   const [openworkReconnectStatus, setOpenworkReconnectStatus] = createSignal<string | null>(null);
   const [openworkReconnectError, setOpenworkReconnectError] = createSignal<string | null>(null);
+  const [remoteFetchingToken, setRemoteFetchingToken] = createSignal(false);
+  const [remoteFetchTokenError, setRemoteFetchTokenError] = createSignal<string | null>(null);
   const providerConnectedCount = createMemo(() => (props.providerConnectedIds ?? []).length);
   const providerAvailableCount = createMemo(() => (props.providers ?? []).length);
   const connectedProviderNames = createMemo(() => {
@@ -792,41 +794,6 @@ export default function SettingsView(props: SettingsViewProps) {
                 System mode follows your OS preference automatically.
               </div>
             </div>
-
-            <div class="bg-gray-2/30 border border-gray-7/60 rounded-2xl p-5 space-y-4">
-              <div class="flex items-center gap-2">
-                <Globe size={16} class="text-gray-11" />
-                <div class="text-sm font-medium text-gray-12">Remote connection</div>
-              </div>
-              <div class="text-xs text-gray-9">
-                Set a default OpenWork server URL (e.g. your RunPod ngrok URL). It will pre-fill when you add a remote worker from the dashboard.
-              </div>
-              <div class="grid gap-3">
-                <TextInput
-                  label="Remote worker URL"
-                  value={props.defaultRemoteWorkerUrl}
-                  onInput={(e) => props.setDefaultRemoteWorkerUrl(e.currentTarget.value)}
-                  placeholder="https://unameliorative-regretably-kimberly.ngrok-free.dev"
-                  hint="Your public ngrok URL pointing to the OpenWork server (e.g. RunPod)."
-                  disabled={props.busy}
-                />
-                <label class="block">
-                  <div class="mb-1 text-xs font-medium text-gray-11">Access token (optional)</div>
-                  <input
-                    type="password"
-                    value={props.defaultRemoteWorkerToken}
-                    onInput={(e) => props.setDefaultRemoteWorkerToken(e.currentTarget.value)}
-                    placeholder="Paste your token"
-                    disabled={props.busy}
-                    class="w-full rounded-xl bg-gray-2/60 px-3 py-2 text-sm text-gray-12 placeholder:text-gray-10 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] focus:outline-none focus:ring-2 focus:ring-gray-6/20"
-                  />
-                  <div class="mt-1 text-xs text-gray-10">Optional. Saved locally and used when adding a remote worker.</div>
-                </label>
-              </div>
-              <div class="text-xs text-gray-8">
-                From the dashboard, use <span class="font-medium">Add Remote Worker...</span> to connect; the URL above will be pre-filled.
-              </div>
-            </div>
           </div>
         </Match>
 
@@ -954,6 +921,66 @@ export default function SettingsView(props: SettingsViewProps) {
               <Show when={openworkReconnectError()}>
                 {(value) => <div class="text-xs text-red-11">{value()}</div>}
               </Show>
+            </div>
+
+            <div class="bg-gray-2/30 border border-gray-7/60 rounded-2xl p-5 space-y-4">
+              <div class="flex items-center gap-2">
+                <Globe size={16} class="text-gray-11" />
+                <div class="text-sm font-medium text-gray-12">Remote connection</div>
+              </div>
+              <div class="text-xs text-gray-9">
+                Default OpenWork server URL (e.g. RunPod ngrok). Pre-fills when you add a remote worker. Token is fetched automatically from your server’s <span class="font-mono">/token</span> endpoint.
+              </div>
+              <div class="grid gap-3">
+                <TextInput
+                  label="Remote worker URL"
+                  value={props.defaultRemoteWorkerUrl}
+                  onInput={(e) => props.setDefaultRemoteWorkerUrl(e.currentTarget.value)}
+                  placeholder="https://unameliorative-regretably-kimberly.ngrok-free.dev"
+                  hint="Your public ngrok URL pointing to the OpenWork server (e.g. RunPod)."
+                  disabled={props.busy}
+                />
+                <div class="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    class="text-xs h-9 py-0 px-3"
+                    onClick={async () => {
+                      const url = props.defaultRemoteWorkerUrl.trim().replace(/\/$/, "");
+                      if (!url || remoteFetchingToken()) return;
+                      setRemoteFetchTokenError(null);
+                      setRemoteFetchingToken(true);
+                      try {
+                        const res = await fetch(`${url}/token`, {
+                          method: "GET",
+                          headers: { Accept: "application/json" },
+                          cache: "no-store",
+                        });
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        const data = (await res.json()) as { token?: string; clientToken?: string };
+                        const token = (data.token ?? data.clientToken ?? "").trim();
+                        if (token) props.setDefaultRemoteWorkerToken(token);
+                        else throw new Error("No token in response");
+                      } catch (e) {
+                        setRemoteFetchTokenError(e instanceof Error ? e.message : "Failed to fetch token");
+                      } finally {
+                        setRemoteFetchingToken(false);
+                      }
+                    }}
+                    disabled={props.busy || !props.defaultRemoteWorkerUrl.trim() || remoteFetchingToken()}
+                  >
+                    {remoteFetchingToken() ? "Fetching…" : "Fetch token from /token"}
+                  </Button>
+                  <Show when={props.defaultRemoteWorkerToken}>
+                    <span class="text-xs text-green-11">Token saved</span>
+                  </Show>
+                </div>
+                <Show when={remoteFetchTokenError()}>
+                  <div class="text-xs text-red-11">{remoteFetchTokenError()}</div>
+                </Show>
+                <div class="text-xs text-gray-8">
+                  From the dashboard, use <span class="font-medium">Add Remote Worker...</span> or <span class="font-medium">Connect remote</span>; only optional path (default <span class="font-mono">/workspace</span>) is asked.
+                </div>
+              </div>
             </div>
 
             <div class="bg-gray-2/30 border border-gray-7/60 rounded-2xl p-5 space-y-4">
