@@ -493,7 +493,11 @@ export default function App() {
     setOpenworkServerUrl(hostUrl || settingsUrl);
   });
 
-  const checkOpenworkServer = async (url: string, token?: string, hostToken?: string) => {
+  const checkOpenworkServer = async (
+    url: string,
+    token?: string,
+    hostToken?: string,
+  ): Promise<{ status: OpenworkServerStatus; capabilities: OpenworkServerCapabilities | null; refreshedToken?: string }> => {
     const client = createOpenworkServerClient({ baseUrl: url, token, hostToken });
     try {
       await client.health();
@@ -504,15 +508,35 @@ export default function App() {
       return { status: "disconnected" as OpenworkServerStatus, capabilities: null };
     }
 
-    if (!token) {
+    let currentToken = token;
+    if (!currentToken) {
+      try {
+        const fetched = await fetchOpenworkServerToken(url);
+        if (fetched) currentToken = fetched;
+      } catch {
+        // ignore
+      }
+    }
+    if (!currentToken) {
       return { status: "limited" as OpenworkServerStatus, capabilities: null };
     }
 
+    const clientWithToken = createOpenworkServerClient({ baseUrl: url, token: currentToken, hostToken });
     try {
-      const caps = await client.capabilities();
+      const caps = await clientWithToken.capabilities();
       return { status: "connected" as OpenworkServerStatus, capabilities: caps };
     } catch (error) {
       if (error instanceof OpenworkServerError && (error.status === 401 || error.status === 403)) {
+        try {
+          const fetched = await fetchOpenworkServerToken(url);
+          if (fetched) {
+            const refreshedClient = createOpenworkServerClient({ baseUrl: url, token: fetched, hostToken });
+            const caps = await refreshedClient.capabilities();
+            return { status: "connected" as OpenworkServerStatus, capabilities: caps, refreshedToken: fetched };
+          }
+        } catch {
+          // ignore
+        }
         return { status: "limited" as OpenworkServerStatus, capabilities: null };
       }
       return { status: "disconnected" as OpenworkServerStatus, capabilities: null };
@@ -548,20 +572,13 @@ export default function App() {
       if (busy) return;
       busy = true;
       try {
-        let currentToken = token;
-        if (!currentToken) {
-          try {
-            const fetched = await fetchOpenworkServerToken(url);
-            if (fetched) {
-              updateOpenworkServerSettings({ ...openworkServerSettings(), token: fetched });
-              currentToken = fetched;
-            }
-          } catch {
-            // ignore
-          }
-        }
+        const latestSettings = openworkServerSettings();
+        let currentToken = latestSettings.token?.trim() ?? token;
         const result = await checkOpenworkServer(url, currentToken, hostToken);
         if (!active) return;
+        if (result.refreshedToken) {
+          updateOpenworkServerSettings({ ...openworkServerSettings(), token: result.refreshedToken });
+        }
         setOpenworkServerStatus(result.status);
         setOpenworkServerCapabilities(result.capabilities);
         delayMs =
@@ -2739,6 +2756,9 @@ export default function App() {
       }
 
       const result = await checkOpenworkServer(url, token, auth.hostToken);
+      if (result.refreshedToken) {
+        updateOpenworkServerSettings({ ...openworkServerSettings(), token: result.refreshedToken });
+      }
       setOpenworkServerStatus(result.status);
       setOpenworkServerCapabilities(result.capabilities);
       setOpenworkServerCheckedAt(Date.now());
