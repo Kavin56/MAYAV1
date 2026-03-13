@@ -120,6 +120,10 @@ export function unwrap<T>(result: FieldsResult<T>): NonNullable<T> {
   throw new Error(message || "Unknown error");
 }
 
+function isNgrokUrl(url: string): boolean {
+  return /ngrok-free\.dev|ngrok\.io/i.test(url);
+}
+
 export function createClient(baseUrl: string, directory?: string, auth?: OpencodeAuth) {
   baseUrl = migrateLegacyNgrokUrl(baseUrl) || baseUrl;
   const headers: Record<string, string> = {};
@@ -128,12 +132,26 @@ export function createClient(baseUrl: string, directory?: string, auth?: Opencod
     if (authHeader) {
       headers.Authorization = authHeader;
     }
+    if (isNgrokUrl(baseUrl)) {
+      headers["ngrok-skip-browser-warning"] = "true";
+    }
   }
 
   const fetchImpl = isTauriRuntime()
     ? createTauriFetch(auth)
-    : (input: RequestInfo | URL, init?: RequestInit) =>
-        fetchWithTimeout(globalThis.fetch, input, init, DEFAULT_OPENCODE_REQUEST_TIMEOUT_MS);
+    : (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input instanceof Request ? input.url : (input as URL).href;
+        const initHeaders = new Headers(init?.headers);
+        if (isNgrokUrl(url) && !initHeaders.has("ngrok-skip-browser-warning")) {
+          initHeaders.set("ngrok-skip-browser-warning", "true");
+        }
+        return fetchWithTimeout(
+          globalThis.fetch,
+          input instanceof Request ? new Request(input, { headers: initHeaders }) : input,
+          { ...init, headers: initHeaders },
+          DEFAULT_OPENCODE_REQUEST_TIMEOUT_MS,
+        );
+      };
   return createOpencodeClient({
     baseUrl,
     directory,

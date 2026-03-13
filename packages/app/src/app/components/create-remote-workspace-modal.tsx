@@ -68,6 +68,22 @@ export default function CreateRemoteWorkspaceModal(props: {
     setOpenworkTokenVisible(false);
     setDirectory(defaults.directory?.trim() ?? "");
     setDisplayName(defaults.displayName?.trim() ?? "");
+    // #region agent log
+    const urlLen = (defaults.openworkHostUrl?.trim() ?? "").length;
+    const staticModeVal = props.staticUrlAndToken === true && urlLen > 0;
+    const canSubmitVal = !submitting() && (staticModeVal || (defaults.openworkHostUrl?.trim() ?? "").length > 0);
+    fetch("http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "create-remote-workspace-modal.tsx:effect",
+        message: "Add Remote modal opened",
+        data: { openworkHostUrlLength: urlLen, staticUrlAndToken: props.staticUrlAndToken, staticMode: staticModeVal, canSubmit: canSubmitVal },
+        timestamp: Date.now(),
+        hypothesisId: "A",
+      }),
+    }).catch(() => {});
+    // #endregion
   });
 
   const content = (
@@ -167,14 +183,28 @@ export default function CreateRemoteWorkspaceModal(props: {
             </Button>
           </Show>
           <Button
-            onClick={() =>
-              props.onConfirm({
+            onClick={() => {
+              const payload = {
                 openworkHostUrl: staticMode() ? (props.initialValues?.openworkHostUrl?.trim() ?? "") : openworkHostUrl().trim(),
                 openworkToken: staticMode() ? (props.initialValues?.openworkToken?.trim() ?? "") : openworkToken().trim(),
                 directory: directory().trim() ? directory().trim() : null,
                 displayName: displayName().trim() ? displayName().trim() : null,
-              })
-            }
+              };
+              // #region agent log
+              fetch("http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  location: "create-remote-workspace-modal.tsx:onConfirm",
+                  message: "Add Worker clicked",
+                  data: { openworkHostUrlLength: (payload.openworkHostUrl ?? "").length, hasToken: Boolean((payload.openworkToken ?? "").length), directory: payload.directory },
+                  timestamp: Date.now(),
+                  hypothesisId: "B",
+                }),
+              }).catch(() => {});
+              // #endregion
+              props.onConfirm(payload);
+            }}
             disabled={!canSubmit()}
             title={!canSubmit() && !staticMode() && !openworkHostUrl().trim() ? translate("dashboard.remote_base_url_required") : undefined}
           >

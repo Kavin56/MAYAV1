@@ -1365,6 +1365,19 @@ export function createWorkspaceStore(options: {
         options.setClient(null);
         options.setConnectedVersion(null);
         const message = e instanceof Error ? e.message : safeStringify(e);
+        // #region agent log
+        fetch("http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "workspace.ts:connectToServer:catch",
+            message: "connectToServer failed (waitForHealthy or later)",
+            data: { error: message, baseUrlLength: nextBaseUrl.length },
+            timestamp: Date.now(),
+            hypothesisId: "D",
+          }),
+        }).catch(() => {});
+        // #endregion
         wsDebug("connect:error", { ms: Date.now() - connectStart, message });
         connectMetrics.totalMs = Date.now() - connectStart;
         options.setOpencodeConnectStatus?.({
@@ -1717,6 +1730,20 @@ export function createWorkspaceStore(options: {
     const directory = input.directory?.trim() ?? "";
     const displayName = input.displayName?.trim() || null;
 
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "workspace.ts:createRemoteWorkspaceFlow:entry",
+        message: "createRemoteWorkspaceFlow started",
+        data: { hostUrlLength: hostUrl.length, hasToken: Boolean(token.length), directory },
+        timestamp: Date.now(),
+        hypothesisId: "C",
+      }),
+    }).catch(() => {});
+    // #endregion
+
     if (!hostUrl) {
       options.setError(t("app.error.remote_base_url_required", currentLocale()));
       return false;
@@ -1730,6 +1757,20 @@ export function createWorkspaceStore(options: {
         // continue with empty token; resolveOpenworkHost will fail with clear error
       }
     }
+
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "workspace.ts:createRemoteWorkspaceFlow:afterToken",
+        message: "after token fetch",
+        data: { hasToken: Boolean(token.length) },
+        timestamp: Date.now(),
+        hypothesisId: "C",
+      }),
+    }).catch(() => {});
+    // #endregion
 
     options.setError(null);
     console.log("[workspace] create remote request", {
@@ -1795,6 +1836,19 @@ export function createWorkspaceStore(options: {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : safeStringify(error);
+      // #region agent log
+      fetch("http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          location: "workspace.ts:createRemoteWorkspaceFlow:resolveCatch",
+          message: "resolveOpenworkHost failed",
+          data: { error: message },
+          timestamp: Date.now(),
+          hypothesisId: "C",
+        }),
+      }).catch(() => {});
+      // #endregion
       options.setError(addOpencodeCacheHint(message));
       return false;
     }
@@ -1803,6 +1857,20 @@ export function createWorkspaceStore(options: {
       options.setError(t("app.error.remote_base_url_required", currentLocale()));
       return false;
     }
+
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "workspace.ts:createRemoteWorkspaceFlow:beforeConnect",
+        message: "calling connectToServer",
+        data: { resolvedBaseUrlLength: resolvedBaseUrl.length, hasAuth: Boolean(resolvedAuth) },
+        timestamp: Date.now(),
+        hypothesisId: "D",
+      }),
+    }).catch(() => {});
+    // #endregion
 
     const ok = await connectToServer(
       resolvedBaseUrl,
@@ -1814,6 +1882,20 @@ export function createWorkspaceStore(options: {
       },
       resolvedAuth,
     );
+
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/dc7a421c-417b-4d55-8006-21ccdf85ed89", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "workspace.ts:createRemoteWorkspaceFlow:connectResult",
+        message: "connectToServer result",
+        data: { ok },
+        timestamp: Date.now(),
+        hypothesisId: "D",
+      }),
+    }).catch(() => {});
+    // #endregion
 
     if (!ok) {
       return false;

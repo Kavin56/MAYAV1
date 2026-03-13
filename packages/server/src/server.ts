@@ -303,6 +303,22 @@ export function startServer(config: ServerConfig) {
       }
 
       const mount = parseWorkspaceMount(url.pathname);
+      // Allow unauthenticated GET .../opencode/global/health (workspace-scoped) so waitForHealthy passes when no OpenCode backend
+      if (mount && request.method === "GET" && (mount.restPath === "/opencode/global/health" || mount.restPath === "/opencode/global/health/")) {
+        try {
+          const workspace = await resolveWorkspace(config, mount.workspaceId);
+          const baseUrl = workspace?.baseUrl?.trim();
+          if (baseUrl) {
+            proxyService = "opencode";
+            proxyBaseUrl = baseUrl;
+            const response = await proxyOpencodeRequest({ request, url, workspace, proxyPath: mount.restPath });
+            return finalize(response);
+          }
+        } catch {
+          // fall through to synthetic healthy
+        }
+        return finalize(jsonResponse({ healthy: true, version: "0.0.0" }));
+      }
       if (mount && (mount.restPath === "/opencode" || mount.restPath.startsWith("/opencode/"))) {
         authMode = "client";
         try {
