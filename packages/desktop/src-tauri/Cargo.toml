@@ -1,7 +1,7 @@
 [package]
-name = "openwork"
-version = "0.11.121"
-description = "OpenWork"
+name = "maya"
+version = "1.3.4"
+description = "MAYA"
 authors = ["Different AI"]
 edition = "2021"
 

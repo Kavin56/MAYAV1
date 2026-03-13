@@ -376,10 +376,10 @@ export default function SettingsView(props: SettingsViewProps) {
         setOpenworkReconnectError("Reconnect failed. Check server URL/token and try again.");
         return;
       }
-      setOpenworkReconnectStatus("Reconnected to OpenWork server.");
+      setOpenworkReconnectStatus("Reconnected to MAYA server.");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      setOpenworkReconnectError(message || "Failed to reconnect OpenWork server.");
+      setOpenworkReconnectError(message || "Failed to reconnect MAYA server.");
     }
   };
 
@@ -661,11 +661,10 @@ export default function SettingsView(props: SettingsViewProps) {
           <For each={availableTabs()}>
             {(tab) => (
               <button
-                class={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
-                  activeTab() === tab
+                class={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${activeTab() === tab
                     ? "bg-gray-12/10 text-gray-12 border-gray-6/30"
                     : "text-gray-10 border-gray-6/50 hover:text-gray-12 hover:bg-gray-2/40"
-                }`}
+                  }`}
                 onClick={() => props.setSettingsTab(tab)}
               >
                 {tabLabel(tab)}
@@ -856,11 +855,10 @@ export default function SettingsView(props: SettingsViewProps) {
               <div class="pt-1 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  class={`${compactOutlineActionClass} ${
-                    props.developerMode
+                  class={`${compactOutlineActionClass} ${props.developerMode
                       ? "border-blue-7/35 bg-blue-3/20 text-blue-11 hover:bg-blue-3/35 hover:text-blue-11"
                       : ""
-                  }`}
+                    }`}
                   onClick={props.toggleDeveloperMode}
                 >
                   <Zap size={14} class={props.developerMode ? "text-blue-10" : "text-dls-secondary"} />
@@ -943,11 +941,10 @@ export default function SettingsView(props: SettingsViewProps) {
               <Show when={props.migrationRepairResult}>
                 {(result) => (
                   <div
-                    class={`rounded-xl border px-3 py-2 text-xs ${
-                      result().ok
+                    class={`rounded-xl border px-3 py-2 text-xs ${result().ok
                         ? "border-green-7/30 bg-green-2/30 text-green-12"
                         : "border-red-7/30 bg-red-2/30 text-red-12"
-                    }`}
+                      }`}
                   >
                     {result().message}
                   </div>
@@ -959,7 +956,7 @@ export default function SettingsView(props: SettingsViewProps) {
               <div class="flex items-start justify-between gap-4">
                 <div>
                   <div class="text-sm font-medium text-gray-12">Updates</div>
-                  <div class="text-xs text-gray-10">Keep OpenWork up to date.</div>
+                  <div class="text-xs text-gray-10">Keep MAYA up to date.</div>
                 </div>
                 <div class="text-xs text-gray-7 font-mono">{props.appVersion ? `v${props.appVersion}` : ""}</div>
               </div>
@@ -974,14 +971,13 @@ export default function SettingsView(props: SettingsViewProps) {
                         <div class="flex items-center justify-between bg-gray-1 p-3 rounded-xl border border-gray-6">
                           <div class="space-y-0.5">
                             <div class="text-sm text-gray-12">Background checks</div>
-                            <div class="text-xs text-gray-7">OpenWork always checks on launch. Also checks once per day (quiet).</div>
+                            <div class="text-xs text-gray-7">MAYA always checks on launch. Also checks once per day (quiet).</div>
                           </div>
                           <button
-                            class={`min-w-[70px] px-4 py-1.5 rounded-full text-xs font-medium border shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-colors ${
-                              props.updateAutoCheck
+                            class={`min-w-[70px] px-4 py-1.5 rounded-full text-xs font-medium border shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-colors ${props.updateAutoCheck
                                 ? "bg-gray-12/12 text-gray-12 border-gray-6/30"
                                 : "bg-gray-1/70 text-gray-10 border-gray-6/60 hover:text-gray-12 hover:bg-gray-2/70"
-                            }`}
+                              }`}
                             onClick={props.toggleUpdateAutoCheck}
                           >
                             {props.updateAutoCheck ? "On" : "Off"}
@@ -994,11 +990,10 @@ export default function SettingsView(props: SettingsViewProps) {
                             <div class="text-xs text-gray-7">Download updates automatically (prompts to restart)</div>
                           </div>
                           <button
-                            class={`min-w-[70px] px-4 py-1.5 rounded-full text-xs font-medium border shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-colors ${
-                              props.updateAutoDownload
+                            class={`min-w-[70px] px-4 py-1.5 rounded-full text-xs font-medium border shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-colors ${props.updateAutoDownload
                                 ? "bg-gray-12/12 text-gray-12 border-gray-6/30"
                                 : "bg-gray-1/70 text-gray-10 border-gray-6/60 hover:text-gray-12 hover:bg-gray-2/70"
-                            }`}
+                              }`}
                             onClick={props.toggleUpdateAutoDownload}
                           >
                             {props.updateAutoDownload ? "On" : "Off"}
@@ -1151,9 +1146,9 @@ export default function SettingsView(props: SettingsViewProps) {
 
                 <div class="bg-gray-2/30 border border-gray-6/50 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div class="min-w-0">
-                    <div class="text-sm text-gray-12">OpenWork Docker containers</div>
+                    <div class="text-sm text-gray-12">MAYA Docker containers</div>
                     <div class="text-xs text-gray-7">
-                      Force-remove Docker containers launched by OpenWork (sandbox + local dev stacks).
+                      Force-remove Docker containers launched by MAYA (sandbox + local dev stacks).
                     </div>
                     <Show when={props.dockerCleanupResult}>
                       <div class="text-xs text-gray-11 mt-2">{props.dockerCleanupResult}</div>
@@ -1182,9 +1177,8 @@ export default function SettingsView(props: SettingsViewProps) {
                   <div class="flex items-center justify-between bg-gray-1 p-3 rounded-xl border border-gray-6">
                     <div class="flex items-center gap-3">
                       <div
-                        class={`p-2 rounded-lg ${
-                          isLocalPreference() ? "bg-indigo-7/10 text-indigo-11" : "bg-green-7/10 text-green-11"
-                        }`}
+                        class={`p-2 rounded-lg ${isLocalPreference() ? "bg-indigo-7/10 text-indigo-11" : "bg-green-7/10 text-green-11"
+                          }`}
                       >
                         <Show when={isLocalPreference()} fallback={<Smartphone size={18} />}>
                           <HardDrive size={18} />
@@ -1291,7 +1285,7 @@ export default function SettingsView(props: SettingsViewProps) {
                           </Button>
                         </div>
                         <div class="text-[11px] text-gray-7">
-                          Use this to point OpenWork at a local OpenCode build (e.g. your fork). Applies next time the engine starts or reloads.
+                          Use this to point MAYA at a local OpenCode build (e.g. your fork). Applies next time the engine starts or reloads.
                         </div>
                       </div>
                     </Show>
@@ -1312,7 +1306,7 @@ export default function SettingsView(props: SettingsViewProps) {
                             onClick={() => props.setEngineRuntime("openwork-orchestrator")}
                             disabled={props.busy}
                           >
-                            OpenWork Orchestrator
+                            MAYA Orchestrator
                           </Button>
                         </div>
                         <div class="text-[11px] text-gray-7">Applies the next time the engine starts or reloads.</div>
@@ -1330,7 +1324,7 @@ export default function SettingsView(props: SettingsViewProps) {
                   <div class="flex items-center justify-between bg-gray-1 p-3 rounded-xl border border-gray-6 gap-3">
                     <div class="min-w-0">
                       <div class="text-sm text-gray-12">Reset onboarding</div>
-                      <div class="text-xs text-gray-7">Clears OpenWork preferences and restarts the app.</div>
+                      <div class="text-xs text-gray-7">Clears MAYA preferences and restarts the app.</div>
                     </div>
                     <Button
                       variant="outline"
@@ -1346,7 +1340,7 @@ export default function SettingsView(props: SettingsViewProps) {
                   <div class="flex items-center justify-between bg-gray-1 p-3 rounded-xl border border-gray-6 gap-3">
                     <div class="min-w-0">
                       <div class="text-sm text-gray-12">Reset app data</div>
-                      <div class="text-xs text-gray-7">More aggressive. Clears OpenWork cache + app data.</div>
+                      <div class="text-xs text-gray-7">More aggressive. Clears MAYA cache + app data.</div>
                     </div>
                     <Button
                       variant="danger"
@@ -1365,6 +1359,30 @@ export default function SettingsView(props: SettingsViewProps) {
                 </div>
 
                 <div class="bg-gray-2/30 border border-gray-6/50 rounded-2xl p-5 space-y-4">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="text-sm font-medium text-gray-12">Open Code</div>
+                      <div class="text-xs text-gray-10">Open the current workspace in Visual Studio Code.</div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      class="text-xs h-8 py-0 px-3 shrink-0"
+                      onClick={() => {
+                        const dir = props.engineInfo?.projectDir;
+                        if (dir) {
+                          window.open(`vscode://file/${dir.replace(/\\/g, "/")}`);
+                        } else {
+                          console.warn("No project directory available to open in VS Code.");
+                        }
+                      }}
+                      disabled={props.busy}
+                    >
+                      Open Code
+                    </Button>
+                  </div>
+                </div>
+
+                <div class="bg-gray-2/30 border border-gray-6/50 rounded-2xl p-5 space-y-4">
                   <div>
                     <div class="text-sm font-medium text-gray-12">Devtools</div>
                     <div class="text-xs text-gray-10">Sidecar health, capabilities, and audit trail.</div>
@@ -1376,16 +1394,16 @@ export default function SettingsView(props: SettingsViewProps) {
                         <div class="text-sm font-medium text-gray-12">Versions</div>
                         <div class="text-xs text-gray-10">Sidecar + desktop build info.</div>
                       </div>
-                        <div class="space-y-1">
-                          <div class="text-[11px] text-gray-7 font-mono truncate">Desktop app: {appVersionLabel()}</div>
-                          <div class="text-[11px] text-gray-7 font-mono truncate">Commit: {appCommitLabel()}</div>
-                          <div class="text-[11px] text-gray-7 font-mono truncate">Orchestrator: {orchestratorVersionLabel()}</div>
-                          <div class="text-[11px] text-gray-7 font-mono truncate">OpenCode: {opencodeVersionLabel()}</div>
-                          <div class="text-[11px] text-gray-7 font-mono truncate">
-                            OpenWork server: {openworkServerVersionLabel()}
-                          </div>
-                          <div class="text-[11px] text-gray-7 font-mono truncate">OpenCodeRouter: {opencodeRouterVersionLabel()}</div>
+                      <div class="space-y-1">
+                        <div class="text-[11px] text-gray-7 font-mono truncate">Desktop app: {appVersionLabel()}</div>
+                        <div class="text-[11px] text-gray-7 font-mono truncate">Commit: {appCommitLabel()}</div>
+                        <div class="text-[11px] text-gray-7 font-mono truncate">Orchestrator: {orchestratorVersionLabel()}</div>
+                        <div class="text-[11px] text-gray-7 font-mono truncate">OpenCode: {opencodeVersionLabel()}</div>
+                        <div class="text-[11px] text-gray-7 font-mono truncate">
+                          MAYA server: {openworkServerVersionLabel()}
                         </div>
+                        <div class="text-[11px] text-gray-7 font-mono truncate">OpenCodeRouter: {opencodeRouterVersionLabel()}</div>
+                      </div>
                     </div>
 
                     <div class="bg-gray-1 p-4 rounded-xl border border-gray-6 space-y-3">
@@ -1526,7 +1544,7 @@ export default function SettingsView(props: SettingsViewProps) {
                     <div class="bg-gray-1 p-4 rounded-xl border border-gray-6 space-y-3">
                       <div class="flex items-center justify-between gap-3">
                         <div>
-                          <div class="text-sm font-medium text-gray-12">OpenWork server</div>
+                          <div class="text-sm font-medium text-gray-12">MAYA server</div>
                           <div class="text-xs text-gray-10">Config and approvals sidecar.</div>
                         </div>
                         <div class={`text-xs px-2 py-1 rounded-full border ${openworkStatusStyle()}`}>
@@ -1619,7 +1637,7 @@ export default function SettingsView(props: SettingsViewProps) {
 
                   <div class="bg-gray-1 p-4 rounded-xl border border-gray-6 space-y-3">
                     <div class="flex items-center justify-between gap-3">
-                      <div class="text-sm font-medium text-gray-12">OpenWork server diagnostics</div>
+                      <div class="text-sm font-medium text-gray-12">MAYA server diagnostics</div>
                       <div class="text-[11px] text-gray-8 font-mono truncate">
                         {props.openworkServerDiagnostics?.version ?? "—"}
                       </div>
@@ -1647,7 +1665,7 @@ export default function SettingsView(props: SettingsViewProps) {
 
                   <div class="bg-gray-1 p-4 rounded-xl border border-gray-6 space-y-3">
                     <div class="flex items-center justify-between gap-3">
-                      <div class="text-sm font-medium text-gray-12">OpenWork server capabilities</div>
+                      <div class="text-sm font-medium text-gray-12">MAYA server capabilities</div>
                       <div class="text-[11px] text-gray-8 font-mono truncate">
                         {props.openworkServerWorkspaceId ? `Worker ${props.openworkServerWorkspaceId}` : "Worker unresolved"}
                       </div>

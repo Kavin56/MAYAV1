@@ -83,11 +83,11 @@ export default function WorkspaceSwitchOverlay(props: {
         </div>
 
         <div class="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-10 text-center">
-          <div class="flex flex-col items-center gap-8">
+          <div class="flex flex-col items-center gap-12">
                       <div class="relative">
-
-              <div class="relative h-24 w-24 flex items-center justify-center">
-                <OpenWorkLogo size={44} class="drop-shadow-sm" />
+ 
+              <div class="relative h-48 w-48 flex items-center justify-center">
+                <OpenWorkLogo size={132} class="drop-shadow-lg" />
               </div>
             </div>
 

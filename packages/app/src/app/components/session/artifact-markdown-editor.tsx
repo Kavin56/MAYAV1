@@ -41,7 +41,7 @@ export default function ArtifactMarkdownEditor(props: ArtifactMarkdownEditorProp
   const canSave = createMemo(() => dirty() && !saving() && canWrite());
   const writeDisabledReason = createMemo(() => {
     if (canWrite()) return null;
-    return "Connect to an OpenWork server worker to edit files.";
+    return "Connect to a MAYA server worker to edit files.";
   });
 
   const resetState = () => {
@@ -127,7 +127,7 @@ export default function ArtifactMarkdownEditor(props: ArtifactMarkdownEditorProp
     const workspaceId = props.workspaceId;
     const target = resolvedPath() ?? path();
     if (!client || !workspaceId || !target) {
-      props.onToast?.("Cannot save: OpenWork server not connected");
+      props.onToast?.("Cannot save: MAYA server not connected");
       return;
     }
     if (!isMarkdown(target)) {
@@ -233,7 +233,7 @@ export default function ArtifactMarkdownEditor(props: ArtifactMarkdownEditorProp
   return (
     <Show when={props.open}>
       <div class="flex flex-col h-full min-h-0">
-        <div class="h-14 px-4 border-b border-dls-border flex items-center justify-between bg-dls-sidebar">
+        <div class="h-14 px-4 flex items-center justify-between" style={{ "border-bottom": "1px solid var(--glass-stroke-soft)", background: "var(--glass-bg)" }}>
           <div class="flex items-center gap-2 min-w-0">
             <FileText size={16} class="text-dls-secondary shrink-0" />
             <div class="min-w-0">

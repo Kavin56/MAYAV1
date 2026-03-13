@@ -9,8 +9,8 @@ use crate::engine::manager::EngineManager;
 use crate::engine::spawn::{find_free_port, spawn_engine};
 use crate::opencode_router::manager::OpenCodeRouterManager;
 use crate::opencode_router::spawn::resolve_opencode_router_health_port;
-use crate::openwork_server::{
-    manager::OpenworkServerManager, resolve_connect_url, start_openwork_server,
+use crate::maya_server::{
+    manager::MayaServerManager, resolve_connect_url, start_maya_server,
 };
 use crate::orchestrator::manager::OrchestratorManager;
 use crate::orchestrator::{self, OrchestratorSpawnOptions};
@@ -128,7 +128,7 @@ pub fn engine_info(
 pub fn engine_stop(
     manager: State<EngineManager>,
     orchestrator_manager: State<OrchestratorManager>,
-    openwork_manager: State<OpenworkServerManager>,
+    openwork_manager: State<MayaServerManager>,
     opencode_router_manager: State<OpenCodeRouterManager>,
 ) -> EngineInfo {
     let mut state = manager.inner.lock().expect("engine mutex poisoned");
@@ -137,7 +137,7 @@ pub fn engine_stop(
     }
     EngineManager::stop_locked(&mut state);
     if let Ok(mut openwork_state) = openwork_manager.inner.lock() {
-        OpenworkServerManager::stop_locked(&mut openwork_state);
+        MayaServerManager::stop_locked(&mut openwork_state);
     }
     if let Ok(mut opencode_router_state) = opencode_router_manager.inner.lock() {
         OpenCodeRouterManager::stop_locked(&mut opencode_router_state);
@@ -235,7 +235,7 @@ pub fn engine_start(
     app: AppHandle,
     manager: State<EngineManager>,
     orchestrator_manager: State<OrchestratorManager>,
-    openwork_manager: State<OpenworkServerManager>,
+    openwork_manager: State<MayaServerManager>,
     opencode_router_manager: State<OpenCodeRouterManager>,
     project_dir: String,
     prefer_sidecar: Option<bool>,
@@ -461,7 +461,7 @@ pub fn engine_start(
             }
         };
 
-        if let Err(error) = start_openwork_server(
+        if let Err(error) = start_maya_server(
             &app,
             &openwork_manager,
             &workspace_paths,
@@ -642,7 +642,7 @@ pub fn engine_start(
         }
     };
 
-    if let Err(error) = start_openwork_server(
+    if let Err(error) = start_maya_server(
         &app,
         &openwork_manager,
         &workspace_paths,

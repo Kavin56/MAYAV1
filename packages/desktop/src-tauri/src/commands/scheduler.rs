@@ -6,7 +6,7 @@ use crate::paths::home_dir;
 use crate::types::ScheduledJob;
 
 fn scheduler_supported() -> bool {
-    cfg!(target_os = "macos") || cfg!(target_os = "linux")
+    cfg!(target_os = "macos") || cfg!(target_os = "linux") || cfg!(target_os = "windows")
 }
 
 fn require_scheduler_support() -> Result<(), String> {
@@ -270,9 +270,18 @@ fn uninstall_job(slug: &str, scope_id: Option<&str>) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+#[cfg(target_os = "windows")]
+fn uninstall_job(slug: &str, _scope_id: Option<&str>) -> Result<(), String> {
+    // Windows scheduler cleanup via schtasks
+    let _ = Command::new("schtasks")
+        .args(["/Delete", "/TN", slug, "/F"])
+        .output();
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 fn uninstall_job(_slug: &str, _scope_id: Option<&str>) -> Result<(), String> {
-    Err("Scheduler is supported only on macOS and Linux.".to_string())
+    Err("Scheduler is supported only on macOS, Linux, and Windows.".to_string())
 }
 
 #[tauri::command]

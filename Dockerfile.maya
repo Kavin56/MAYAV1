@@ -1,0 +1,55 @@
+:FROM node:18-alpine
+
+# Install dependencies for headless Chrome and other tools
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    curl \
+    git \
+    python3 \
+    py3-pip \
+    && rm -rf /var/cache/apk/*
+
+# Set environment variables for Chrome
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    CHROME_BIN=/usr/bin/chromium-browser \
+    NODE_ENV=production
+
+# Create app directory
+WORKDIR /opt/maya
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Create necessary directories
+RUN mkdir -p /opt/maya/soul /opt/maya/config /opt/maya/logs /opt/maya/data /opt/maya/skills
+
+# Copy application code
+COPY . .
+
+# Set permissions
+RUN chmod +x /opt/maya/entrypoint.sh && \
+    chown -R node:node /opt/maya
+
+# Switch to non-root user
+USER node
+
+# Expose ports
+EXPOSE 3000 9229
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# Entry point
+ENTRYPOINT ["/opt/maya/entrypoint.sh"]
+CMD ["npm", "start"]

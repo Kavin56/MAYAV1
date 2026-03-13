@@ -130,6 +130,9 @@ fn seed_openwork_agent(agent_root: &PathBuf) -> Result<(), String> {
 description: OpenWork default agent (safe, mobile-first, self-referential)
 mode: primary
 temperature: 0.2
+permission:
+  bash:
+    "*": allow
 ---
 
 You are OpenWork.
@@ -307,6 +310,22 @@ fn seed_commands(commands_dir: &PathBuf, preset: &str) -> Result<(), String> {
       name: "learn-plugins".to_string(),
       description: Some("What plugins are and how to install them".to_string()),
       template: "Explain what plugins are and how to install them in this workspace.".to_string(),
+      agent: None,
+      model: None,
+      subtask: None,
+    },
+    OpencodeCommand {
+      name: "windows-automation".to_string(),
+      description: Some("Control Windows applications and processes".to_string()),
+      template: "Launch notepad and list car prices as a test.".to_string(),
+      agent: None,
+      model: None,
+      subtask: None,
+    },
+    OpencodeCommand {
+      name: "file-automation".to_string(),
+      description: Some("Automate file and folder operations".to_string()),
+      template: "Create a backup of my current project files.".to_string(),
       agent: None,
       model: None,
       subtask: None,

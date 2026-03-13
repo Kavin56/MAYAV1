@@ -155,7 +155,7 @@ const opencodeTargetPath = opencodeTargetName ? join(sidecarDir, opencodeTargetN
 const opencodeCandidatePath = opencodeTargetPath ?? opencodePath;
 let existingOpencodeVersion = null;
 
-// openwork-server paths
+// openwork-server paths (canonical binary)
 const openworkServerBaseName = "openwork-server";
 const openworkServerName = process.platform === "win32" ? `${openworkServerBaseName}.exe` : openworkServerBaseName;
 const openworkServerPath = join(sidecarDir, openworkServerName);
@@ -168,6 +168,15 @@ const openworkServerTargetName = openworkServerTargetTriple
   ? `${openworkServerBaseName}-${openworkServerTargetTriple}${openworkServerTargetTriple.includes("windows") ? ".exe" : ""}`
   : null;
 const openworkServerTargetPath = openworkServerTargetName ? join(sidecarDir, openworkServerTargetName) : null;
+
+// MAYA server alias paths (desktop expects a "maya-server" sidecar)
+const mayaServerBaseName = "maya-server";
+const mayaServerName = process.platform === "win32" ? `${mayaServerBaseName}.exe` : mayaServerBaseName;
+const mayaServerPath = join(sidecarDir, mayaServerName);
+const mayaServerTargetName = openworkServerTargetTriple
+  ? `${mayaServerBaseName}-${openworkServerTargetTriple}${openworkServerTargetTriple.includes("windows") ? ".exe" : ""}`
+  : null;
+const mayaServerTargetPath = mayaServerTargetName ? join(sidecarDir, mayaServerTargetName) : null;
 
 const openworkServerDir = resolve(__dirname, "..", "..", "server");
 
@@ -378,6 +387,34 @@ if (existsSync(openworkServerBuildPath)) {
         // ignore
       }
       copyFileSync(openworkServerBuildPath, openworkServerTargetPath);
+    }
+  }
+
+  // Also expose the same binary under the "maya-server" name that the desktop app expects.
+  const shouldCopyMayaCanonical = didBuildOpenworkServer || !existsSync(mayaServerPath) || isStubBinary(mayaServerPath);
+  if (shouldCopyMayaCanonical && openworkServerBuildPath !== mayaServerPath) {
+    try {
+      if (existsSync(mayaServerPath)) {
+        unlinkSync(mayaServerPath);
+      }
+    } catch {
+      // ignore
+    }
+    copyFileSync(openworkServerBuildPath, mayaServerPath);
+  }
+
+  if (mayaServerTargetPath) {
+    const shouldCopyMayaTarget =
+      didBuildOpenworkServer || !existsSync(mayaServerTargetPath) || isStubBinary(mayaServerTargetPath);
+    if (shouldCopyMayaTarget && openworkServerBuildPath !== mayaServerTargetPath) {
+      try {
+        if (existsSync(mayaServerTargetPath)) {
+          unlinkSync(mayaServerTargetPath);
+        }
+      } catch {
+        // ignore
+      }
+      copyFileSync(openworkServerBuildPath, mayaServerTargetPath);
     }
   }
 }

@@ -38,6 +38,7 @@ import DashboardView from "./pages/dashboard";
 import SessionView from "./pages/session";
 import ProtoWorkspacesView from "./pages/proto-workspaces";
 import ProtoV1UxView from "./pages/proto-v1-ux";
+import MissionControlView from "./pages/mission-control";
 import { createClient, unwrap, waitForHealthy, type OpencodeAuth } from "./lib/opencode";
 import {
   abortSession as abortSessionTyped,
@@ -279,6 +280,7 @@ export default function App() {
     if (path.startsWith("/onboarding")) return "onboarding";
     if (path.startsWith("/session")) return "session";
     if (path.startsWith("/proto")) return "proto";
+    if (path.startsWith("/mission-control")) return "mission-control";
     return "dashboard";
   });
   const isProtoV1Ux = createMemo(() =>
@@ -314,6 +316,10 @@ export default function App() {
     }
     if (next === "onboarding") {
       navigate("/onboarding");
+      return;
+    }
+    if (next === "mission-control") {
+      navigate("/mission-control");
       return;
     }
     if (next === "session") {
@@ -424,6 +430,15 @@ export default function App() {
 
     const stored = readOpenworkServerSettings();
     const invite = readOpenworkConnectInviteFromSearch(window.location.search);
+
+    const headlessWeb =
+      typeof import.meta.env?.VITE_OPENWORK_URL === "string" &&
+      import.meta.env.VITE_OPENWORK_URL.trim().length > 0 &&
+      typeof import.meta.env?.VITE_OPENWORK_TOKEN === "string" &&
+      import.meta.env.VITE_OPENWORK_TOKEN.trim().length > 0;
+    if (headlessWeb && untrack(startupPreference) !== "server") {
+      setStartupPreference("server");
+    }
 
     if (!invite) {
       setOpenworkServerSettings(stored);
@@ -708,6 +723,7 @@ export default function App() {
   const mountTime = Date.now();
   const [lastKnownConfigSnapshot, setLastKnownConfigSnapshot] = createSignal("");
   const [developerMode, setDeveloperMode] = createSignal(false);
+  const [showBuildMode, setShowBuildMode] = createSignal(false);
   const [documentVisible, setDocumentVisible] = createSignal(true);
 
   createEffect(() => {
@@ -1721,7 +1737,7 @@ export default function App() {
     onNotionSkillInstalled: () => {
       setNotionSkillInstalled(true);
       try {
-        window.localStorage.setItem("openwork.notionSkillInstalled", "1");
+        window.localStorage.setItem("maya.notionSkillInstalled", "1");
       } catch {
         // ignore
       }
@@ -2159,11 +2175,8 @@ export default function App() {
     const ordered = prioritize
       ? [...list.filter((ws) => ws.id === prioritize), ...list.filter((ws) => ws.id !== prioritize)]
       : list;
-    for (const ws of ordered) {
-      await refreshSidebarWorkspaceSessions(ws.id);
-      // Yield so long refresh passes don't block UI / timers.
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    }
+    // Run all workspace session refreshes in parallel for faster startup
+    await Promise.all(ordered.map((ws) => refreshSidebarWorkspaceSessions(ws.id)));
   };
 
   const refreshLocalSidebarWorkspaceSessions = async (prioritizeWorkspaceId?: string | null) => {
@@ -2897,10 +2910,10 @@ export default function App() {
         setScheduledJobs([]);
         const status =
           openworkServerStatus() === "disconnected"
-            ? "OpenWork server unavailable. Connect to sync scheduled tasks."
+            ? "MAYA server unavailable. Connect to sync scheduled tasks."
             : openworkServerStatus() === "limited"
-              ? "OpenWork server needs a token to load scheduled tasks."
-              : "OpenWork server not ready.";
+              ? "MAYA server needs a token to load scheduled tasks."
+              : "MAYA server not ready.";
         setScheduledJobsStatus(status);
         return;
       }
@@ -2962,7 +2975,7 @@ export default function App() {
     if (scheduledJobsSource() === "remote") {
       const scheduler = resolveOpenworkScheduler();
       if (!scheduler) {
-        throw new Error("OpenWork server unavailable. Connect to sync scheduled tasks.");
+        throw new Error("MAYA server unavailable. Connect to sync scheduled tasks.");
       }
       const response = await scheduler.client.deleteScheduledJob(scheduler.workspaceId, name);
       setScheduledJobs((current) => current.filter((entry) => entry.slug !== response.job.slug));
@@ -3471,9 +3484,9 @@ export default function App() {
       await refreshMcpServers();
       setNotionStatusDetail(t("mcp.connecting", currentLocale()));
       try {
-        window.localStorage.setItem("openwork.notionStatus", "connecting");
-        window.localStorage.setItem("openwork.notionStatusDetail", t("mcp.connecting", currentLocale()));
-        window.localStorage.setItem("openwork.notionSkillInstalled", "0");
+        window.localStorage.setItem("maya.notionStatus", "connecting");
+        window.localStorage.setItem("maya.notionStatusDetail", t("mcp.connecting", currentLocale()));
+        window.localStorage.setItem("maya.notionSkillInstalled", "0");
       } catch {
         // ignore
       }
@@ -3500,7 +3513,7 @@ export default function App() {
 
     if (isRemoteWorkspace) {
       if (!canUseOpenworkServer) {
-        setMcpStatus("OpenWork server unavailable. MCP config is read-only.");
+        setMcpStatus("MAYA server unavailable. MCP config is read-only.");
         setMcpServers([]);
         setMcpStatuses({});
         return;
@@ -3658,7 +3671,7 @@ export default function App() {
       openworkCapabilities?.mcp?.write;
 
     if (isRemoteWorkspace && !canUseOpenworkServer) {
-      setMcpStatus("OpenWork server unavailable. MCP config is read-only.");
+      setMcpStatus("MAYA server unavailable. MCP config is read-only.");
       finishPerf(developerMode(), "mcp.connect", "blocked", startedAt, {
         reason: "openwork-server-unavailable",
       });
@@ -3865,7 +3878,7 @@ export default function App() {
       openworkCapabilities?.mcp?.write;
 
     if (isRemoteWorkspace && !canUseOpenworkServer) {
-      setMcpStatus("OpenWork server unavailable. MCP auth is read-only.");
+      setMcpStatus("MAYA server unavailable. MCP auth is read-only.");
       return;
     }
 
@@ -4167,7 +4180,7 @@ export default function App() {
 
     if (typeof window !== "undefined") {
       try {
-        const storedBaseUrl = window.localStorage.getItem("openwork.baseUrl");
+        const storedBaseUrl = window.localStorage.getItem("maya.baseUrl");
         if (storedBaseUrl) {
           setBaseUrl(storedBaseUrl);
         }
@@ -4180,10 +4193,10 @@ export default function App() {
         }
 
         const storedEngineSource = window.localStorage.getItem(
-          "openwork.engineSource"
+          "maya.engineSource"
         );
         const storedEngineCustomBinPath = window.localStorage.getItem(
-          "openwork.engineCustomBinPath"
+          "maya.engineCustomBinPath"
         );
         if (storedEngineCustomBinPath) {
           setEngineCustomBinPath(storedEngineCustomBinPath);
@@ -4201,7 +4214,7 @@ export default function App() {
         }
 
         const storedEngineRuntime = window.localStorage.getItem(
-          "openwork.engineRuntime"
+          "maya.engineRuntime"
         );
         if (storedEngineRuntime === "direct" || storedEngineRuntime === "openwork-orchestrator") {
           setEngineRuntime(storedEngineRuntime);
@@ -4285,7 +4298,7 @@ export default function App() {
           }
         }
 
-        const storedNotionStatus = window.localStorage.getItem("openwork.notionStatus");
+        const storedNotionStatus = window.localStorage.getItem("maya.notionStatus");
         if (
           storedNotionStatus === "disconnected" ||
           storedNotionStatus === "connected" ||
@@ -4295,7 +4308,7 @@ export default function App() {
           setNotionStatus(storedNotionStatus);
         }
 
-        const storedNotionDetail = window.localStorage.getItem("openwork.notionStatusDetail");
+        const storedNotionDetail = window.localStorage.getItem("maya.notionStatusDetail");
         if (storedNotionDetail) {
           setNotionStatusDetail(storedNotionDetail);
         } else if (storedNotionStatus === "connecting") {
@@ -4304,7 +4317,7 @@ export default function App() {
 
         await refreshMcpServers();
 
-        const storedNotionSkillInstalled = window.localStorage.getItem("openwork.notionSkillInstalled");
+        const storedNotionSkillInstalled = window.localStorage.getItem("maya.notionSkillInstalled");
         if (storedNotionSkillInstalled === "1") {
           setNotionSkillInstalled(true);
         }
@@ -4556,7 +4569,7 @@ export default function App() {
   createEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      window.localStorage.setItem("openwork.baseUrl", baseUrl());
+      window.localStorage.setItem("maya.baseUrl", baseUrl());
     } catch {
       // ignore
     }
@@ -4578,7 +4591,7 @@ export default function App() {
     if (typeof window === "undefined") return;
     // Legacy key: keep for backwards compatibility.
     try {
-      window.localStorage.setItem("openwork.projectDir", workspaceProjectDir());
+      window.localStorage.setItem("maya.projectDir", workspaceProjectDir());
     } catch {
       // ignore
     }
@@ -4587,7 +4600,7 @@ export default function App() {
   createEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      window.localStorage.setItem("openwork.engineSource", engineSource());
+      window.localStorage.setItem("maya.engineSource", engineSource());
     } catch {
       // ignore
     }
@@ -4598,9 +4611,9 @@ export default function App() {
     try {
       const value = engineCustomBinPath().trim();
       if (value) {
-        window.localStorage.setItem("openwork.engineCustomBinPath", value);
+        window.localStorage.setItem("maya.engineCustomBinPath", value);
       } else {
-        window.localStorage.removeItem("openwork.engineCustomBinPath");
+        window.localStorage.removeItem("maya.engineCustomBinPath");
       }
     } catch {
       // ignore
@@ -4610,7 +4623,7 @@ export default function App() {
   createEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      window.localStorage.setItem("openwork.engineRuntime", engineRuntime());
+      window.localStorage.setItem("maya.engineRuntime", engineRuntime());
     } catch {
       // ignore
     }
@@ -4936,21 +4949,21 @@ export default function App() {
     const canUseGlobalPluginScope = !isRemoteWorkspace && isTauriRuntime();
     const skillsAccessHint = isRemoteWorkspace
       ? openworkStatus === "disconnected"
-        ? "OpenWork server unavailable. Add the server URL/token in Advanced to manage skills."
+        ? "MAYA server unavailable. Add the server URL/token in Advanced to manage skills."
         : openworkStatus === "limited"
-          ? "OpenWork server needs a host token to install/update skills. Add it in Advanced and reconnect."
+          ? "MAYA server needs a host token to install/update skills. Add it in Advanced and reconnect."
           : openworkServerCanWriteSkills()
             ? null
-            : "OpenWork server is read-only for skills. Add a host token in Advanced to enable installs."
+            : "MAYA server is read-only for skills. Add a host token in Advanced to enable installs."
       : null;
     const pluginsAccessHint = isRemoteWorkspace
       ? openworkStatus === "disconnected"
-        ? "OpenWork server unavailable. Plugins are read-only."
+        ? "MAYA server unavailable. Plugins are read-only."
         : openworkStatus === "limited"
-          ? "OpenWork server needs a token to edit plugins."
+          ? "MAYA server needs a token to edit plugins."
           : openworkServerCanWritePlugins()
             ? null
-            : "OpenWork server is read-only for plugins."
+            : "MAYA server is read-only for plugins."
       : null;
 
     return {
@@ -5086,6 +5099,7 @@ export default function App() {
       addPlugin,
       createSessionAndOpen,
       setPrompt,
+      sessionStatusById: activeSessionStatusById(),
       selectSession: selectSession,
       defaultModelLabel: formatModelLabel(defaultModel(), providers()),
       defaultModelRef: formatModelRef(defaultModel()),
@@ -5196,6 +5210,7 @@ export default function App() {
   };
 
   const sessionProps = () => ({
+    view: currentView(),
     selectedSessionId: activeSessionId(),
     setView,
     tab: tab(),
@@ -5231,6 +5246,8 @@ export default function App() {
     updateEnv: updateEnv(),
     anyActiveRuns: anyActiveRuns(),
     installUpdateAndRestart,
+    themeMode: themeMode(),
+    setThemeMode,
     selectedSessionModelLabel: selectedSessionModelLabel(),
     openSessionModelPicker: openSessionModelPicker,
     modelVariantLabel: formatModelVariantLabel(modelVariant()),
@@ -5307,7 +5324,7 @@ export default function App() {
       setTryNotionPromptVisible(false);
       setNotionSkillInstalled(true);
       try {
-        window.localStorage.setItem("openwork.notionSkillInstalled", "1");
+        window.localStorage.setItem("maya.notionSkillInstalled", "1");
       } catch {
         // ignore
       }
@@ -5315,6 +5332,8 @@ export default function App() {
     sessionStatus: selectedSessionStatus(),
     renameSession: renameSessionTitle,
     error: error(),
+    showBuildMode: showBuildMode(),
+    setShowBuildMode: setShowBuildMode,
   });
 
   const dashboardTabs = new Set<DashboardTab>([
@@ -5326,6 +5345,7 @@ export default function App() {
     "identities",
     "config",
     "settings",
+    "docs",
   ]);
 
   const resolveDashboardTab = (value?: string | null) => {
@@ -5360,6 +5380,10 @@ export default function App() {
       if (!tabSegment || tabSegment !== resolvedTab) {
         goToDashboard(resolvedTab, { replace: true });
       }
+      return;
+    }
+
+    if (path.startsWith("/mission-control")) {
       return;
     }
 
@@ -5442,6 +5466,9 @@ export default function App() {
         </Match>
         <Match when={currentView() === "session"}>
           <SessionView {...sessionProps()} />
+        </Match>
+        <Match when={currentView() === "mission-control"}>
+          <MissionControlView {...dashboardProps()} />
         </Match>
         <Match when={true}>
           <DashboardView {...dashboardProps()} />

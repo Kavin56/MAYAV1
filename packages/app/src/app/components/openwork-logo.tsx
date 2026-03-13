@@ -6,14 +6,15 @@ type Props = {
 };
 
 export default function OpenWorkLogo(props: Props): JSX.Element {
-  const size = props.size ?? 24;
+  const size = props.size ?? 72;
+  
   return (
     <img
-      src="/openwork-logo.svg"
-      alt="OpenWork"
+      src="/maya-v1-logo.png"
+      alt="MAYA"
       width={size}
       height={size}
-      class={`inline-block ${props.class ?? ""}`}
+      class={`inline-block drop-shadow-md ${props.class ?? ""}`}
     />
   );
 }

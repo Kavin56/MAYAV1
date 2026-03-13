@@ -41,7 +41,7 @@ export function GlobalSDKProvider(props: ParentProps) {
     const token = (() => {
       if (typeof window === "undefined") return "";
       try {
-        return (window.localStorage.getItem("openwork.server.token") ?? "").trim();
+        return (window.localStorage.getItem("maya.server.token") ?? "").trim();
       } catch {
         return "";
       }

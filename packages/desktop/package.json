@@ -1,12 +1,12 @@
 {
-  "name": "@different-ai/openwork",
+  "name": "maya-desktop",
   "private": true,
-  "version": "0.11.121",
+  "version": "1.3.4",
   "opencodeVersion": "1.2.6",
-  "opencodeRouterVersion": "0.11.121",
+  "opencodeRouterVersion": "1.3.4",
   "type": "module",
   "scripts": {
-    "dev": "OPENWORK_DATA_DIR=\"$HOME/.openwork/openwork-orchestrator-dev\" tauri dev --config src-tauri/tauri.dev.conf.json --config \"{\\\"build\\\":{\\\"devUrl\\\":\\\"http://localhost:${PORT:-5173}\\\"}}\"",
+    "dev": "tauri dev --config src-tauri/tauri.dev.conf.json --config \"{\\\"build\\\":{\\\"devUrl\\\":\\\"http://localhost:5173\\\"}}\"",
     "build": "tauri build",
     "prepare:sidecar": "node ./scripts/prepare-sidecar.mjs"
   },

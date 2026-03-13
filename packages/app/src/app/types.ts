@@ -125,7 +125,7 @@ export type OpencodeEvent = {
   properties?: unknown;
 };
 
-export type View = "onboarding" | "dashboard" | "session" | "proto";
+export type View = "onboarding" | "dashboard" | "session" | "proto" | "mission-control";
 
 export type StartupPreference = "local" | "server";
 
@@ -141,7 +141,8 @@ export type DashboardTab =
   | "mcp"
   | "identities"
   | "config"
-  | "settings";
+  | "settings"
+  | "docs";
 
 export type SettingsTab = "general" | "model" | "advanced" | "debug";
 
@@ -188,6 +189,19 @@ export type HubSkillCard = {
     ref: string;
     path: string;
   };
+};
+
+export type AgentStatus = "working" | "waiting_instruction" | "waiting_permission" | "completed";
+
+export type AgentInfo = {
+  id: string;
+  name: string;
+  status: AgentStatus;
+  workspaceName: string;
+  currentTask?: string;
+  startedAt?: number;
+  completedAt?: number;
+  permissionType?: string;
 };
 
 export type PluginInstallStep = {

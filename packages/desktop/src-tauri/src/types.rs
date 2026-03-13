@@ -93,7 +93,7 @@ pub struct EngineInfo {
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct OpenworkServerInfo {
+pub struct MayaServerInfo {
     pub running: bool,
     pub host: Option<String>,
     pub port: Option<u16>,

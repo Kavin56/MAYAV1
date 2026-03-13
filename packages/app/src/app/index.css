@@ -3,36 +3,88 @@
 
 @import "../styles/colors.css";
 
+/* ── Light theme (Mission Control aesthetic) ─────────────────────────────── */
 :root {
   color-scheme: light;
-  --dls-surface: #ffffff;
-  --dls-sidebar: #f3f3f3;
-  --dls-border: #e4e6eb;
-  --dls-accent: #2563eb;
-  --dls-accent-hover: #1d4ed8;
-  --dls-accent-rgb: 37 99 235;
-  --dls-text-primary: #111827;
-  --dls-text-secondary: #5f6773;
-  --dls-hover: #f9fafb;
-  --dls-active: #e5e5e7;
-  --dls-radius: 8px;
-  --dls-radius-lg: 16px;
+
+  /* Core surface */
+  --dls-surface: #f8f9fb;
+  --dls-surface-rgb: 248 249 251;
+  --dls-sidebar: rgba(255, 255, 255, 0.55);
+  --dls-sidebar-solid: #f0f1f5;
+
+  /* Borders */
+  --dls-border: rgba(0, 0, 0, 0.07);
+  --dls-border-solid: #e2e4ea;
+
+  /* Accent */
+  --dls-accent: #1c1c1e;
+  --dls-accent-hover: #3a3a3c;
+  --dls-accent-rgb: 28 28 30;
+
+  /* Text */
+  --dls-text-primary: #1c1c1e;
+  --dls-text-secondary: #6e6e73;
+
+  /* Interactive */
+  --dls-hover: rgba(0, 0, 0, 0.04);
+  --dls-active: rgba(0, 0, 0, 0.09);
+
+  /* Radius */
+  --dls-radius: 10px;
+  --dls-radius-lg: 18px;
+
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.8);
+  --glass-stroke: rgba(255, 255, 255, 0.7);
+  --glass-stroke-soft: rgba(0, 0, 0, 0.06);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --glass-blur: blur(20px);
+
+  /* Background gradient */
+  --bg-gradient: linear-gradient(135deg, #fdfdfd 0%, #f4f6fa 50%, #eef0f5 100%);
 }
 
+/* ── Dark theme (deep slate glass) ─────────────────────────────────────────── */
 [data-theme="dark"] {
   color-scheme: dark;
-  --dls-surface: #121212;
-  --dls-sidebar: #1a1a1a;
-  --dls-border: #262626;
-  --dls-accent: #3b82f6;
-  --dls-accent-hover: #2563eb;
-  --dls-accent-rgb: 59 130 246;
-  --dls-text-primary: #ededed;
-  --dls-text-secondary: #9ca3af;
-  --dls-hover: #1f1f1f;
-  --dls-active: #2d2d2d;
+
+  /* Core surface */
+  --dls-surface: #0d0d10;
+  --dls-surface-rgb: 13 13 16;
+  --dls-sidebar: rgba(22, 22, 28, 0.7);
+  --dls-sidebar-solid: #16161c;
+
+  /* Borders */
+  --dls-border: rgba(255, 255, 255, 0.07);
+  --dls-border-solid: #2a2a35;
+
+  /* Accent */
+  --dls-accent: #e8e8ed;
+  --dls-accent-hover: #c8c8cc;
+  --dls-accent-rgb: 232 232 237;
+
+  /* Text */
+  --dls-text-primary: #e8e8ed;
+  --dls-text-secondary: #98989f;
+
+  /* Interactive */
+  --dls-hover: rgba(255, 255, 255, 0.05);
+  --dls-active: rgba(255, 255, 255, 0.10);
+
+  /* Glass */
+  --glass-bg: rgba(30, 30, 40, 0.6);
+  --glass-bg-strong: rgba(40, 40, 52, 0.85);
+  --glass-stroke: rgba(255, 255, 255, 0.10);
+  --glass-stroke-soft: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+
+  /* Background gradient */
+  --bg-gradient: linear-gradient(135deg, #0d0d12 0%, #111118 50%, #13131c 100%);
 }
 
+/* ── Base styles ─────────────────────────────────────────────────────────────*/
 html,
 body {
   height: 100%;
@@ -41,27 +93,81 @@ body {
 body {
   margin: 0;
   font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
+    'Montserrat',
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    "Noto Sans",
-    "Apple Color Emoji",
-    "Segoe UI Emoji";
-  font-size: 14px;
-  line-height: 1.5;
+    sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
   color: var(--dls-text-primary);
-  background-color: var(--dls-surface);
+  background: var(--bg-gradient);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Global clickable elements pointer */
+/* ── Glass system ─────────────────────────────────────────────────────────── */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-stroke-soft);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-panel-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-stroke);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-header {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--glass-stroke-soft);
+}
+
+/* ── Sidebar glass override ─────────────────────────────────────────────────*/
+aside.bg-dls-sidebar {
+  background: var(--dls-sidebar) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--dls-border) !important;
+}
+
+/* ── Global surface background ──────────────────────────────────────────────*/
+.bg-dls-surface {
+  background: var(--bg-gradient) !important;
+  background-attachment: fixed !important;
+}
+
+/* ── Frosted card utility ────────────────────────────────────────────────── */
+.card-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-stroke-soft);
+  border-radius: var(--dls-radius-lg);
+  box-shadow: var(--glass-shadow);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-glass:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .card-glass:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Clickable elements ──────────────────────────────────────────────────── */
 button,
 [role="button"],
 a,
@@ -80,27 +186,20 @@ select:disabled {
   cursor: not-allowed;
 }
 
+/* ── Animations ─────────────────────────────────────────────────────────── */
 @utility animate-spin-slow {
   animation: spin 3s linear infinite;
 }
 
 @keyframes soft-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.4;
-  }
-  50% {
-    transform: scale(1.15);
-    opacity: 1;
-  }
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 1; }
 }
 
 @utility animate-soft-pulse {
   animation: soft-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Highlight animation for just-saved command */
 @keyframes command-highlight {
   0% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6);
@@ -112,7 +211,7 @@ select:disabled {
   }
   100% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
-    border-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--glass-stroke-soft);
   }
 }
 
@@ -122,12 +221,8 @@ select:disabled {
 }
 
 @keyframes progress-shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(200%);
-  }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
 }
 
 @utility animate-progress-shimmer {
@@ -135,19 +230,16 @@ select:disabled {
 }
 
 @keyframes soul-nav-pulse {
-  0%,
-  100% {
+  0%, 100% {
     transform: scale(1);
     color: #ef4444;
     filter: drop-shadow(0 0 0 rgba(239, 68, 68, 0));
   }
-
   35% {
     transform: scale(1.08);
     color: #f87171;
     filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.45));
   }
-
   70% {
     transform: scale(1.15);
     color: #ef4444;
@@ -171,4 +263,14 @@ select:disabled {
     animation: none;
     filter: none;
   }
+}
+
+/* ── Theme transition ────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease;
+}
+
+/* But don't animate everything — only structural elements */
+button, input, textarea, select {
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.1s ease;
 }

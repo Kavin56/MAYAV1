@@ -1,11 +1,28 @@
-import { spawn } from "node:child_process";
-import { openSync } from "node:fs";
+import { spawn, execSync } from "node:child_process";
+import { existsSync, openSync, readFileSync } from "node:fs";
 import { access, mkdir } from "node:fs/promises";
 import { createServer } from "node:net";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
 const cwd = process.cwd();
+const isWin = process.platform === "win32";
+const exe = isWin ? ".exe" : "";
+
+const loadEnv = () => {
+  const envPath = path.join(cwd, ".env");
+  if (!existsSync(envPath)) return;
+  const content = readFileSync(envPath, "utf-8");
+  for (const line of content.split(/\r?\n/)) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (m) {
+      const key = m[1];
+      const value = m[2].replace(/^["']|["']$/g, "").trim();
+      if (!(key in process.env)) process.env[key] = value;
+    }
+  }
+};
+loadEnv();
 const tmpDir = path.join(cwd, "tmp");
 
 const ensureTmp = async () => {
@@ -51,6 +68,34 @@ const logLine = (message: string) => {
   process.stdout.write(`${message}\n`);
 };
 
+const killProcessOnPort = (port: number) => {
+  try {
+    if (isWin) {
+      const out = execSync(`netstat -ano | findstr :${port}`, { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] });
+      const pids = new Set<string>();
+      for (const line of out.split(/\r?\n/)) {
+        if (!line.includes("LISTENING")) continue;
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (pid && /^\d+$/.test(pid) && pid !== "0") pids.add(pid);
+      }
+      for (const pid of pids) {
+        try {
+          execSync(`taskkill /PID ${pid} /F`, { stdio: "ignore" });
+          logLine(`[dev:headless-web] Killed process ${pid} on port ${port}`);
+        } catch {
+          // ignore
+        }
+      }
+    } else {
+      execSync(`lsof -ti:${port} 2>/dev/null | xargs kill -9 2>/dev/null || true`, { stdio: "ignore", shell: true });
+      logLine(`[dev:headless-web] Killed process on port ${port}`);
+    }
+  } catch {
+    // no process on port
+  }
+};
+
 const readBool = (value: string | undefined) => {
   const normalized = (value ?? "").trim().toLowerCase();
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
@@ -64,11 +109,15 @@ const autoBuildEnabled = process.env.OPENWORK_DEV_HEADLESS_WEB_AUTOBUILD == null
 
 const runCommand = (command: string, args: string[]) =>
   new Promise<void>((resolve, reject) => {
-    const child = spawn(command, args, {
+    const spawnOpts: Parameters<typeof spawn>[2] = {
       cwd,
       env: process.env,
       stdio: silent ? "ignore" : "inherit",
-    });
+    };
+    if (isWin) {
+      spawnOpts.shell = true;
+    }
+    const child = spawn(command, args, spawnOpts);
     child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) {
@@ -81,11 +130,9 @@ const runCommand = (command: string, args: string[]) =>
 
 const spawnLogged = (command: string, args: string[], logPath: string, env: NodeJS.ProcessEnv) => {
   const logFd = openSync(logPath, "w");
-  return spawn(command, args, {
-    cwd,
-    env,
-    stdio: ["ignore", logFd, logFd],
-  });
+  const spawnOpts: Parameters<typeof spawn>[2] = { cwd, env, stdio: ["ignore", logFd, logFd] };
+  if (isWin) spawnOpts.shell = true;
+  return spawn(command, args, spawnOpts);
 };
 
 const shutdown = (label: string, code: number | null, signal: NodeJS.Signals | null) => {
@@ -96,6 +143,16 @@ const shutdown = (label: string, code: number | null, signal: NodeJS.Signals | n
 
 await ensureTmp();
 
+const desiredWebPort = Number(process.env.OPENWORK_WEB_PORT ?? "5173");
+if (Number.isFinite(desiredWebPort) && desiredWebPort > 0) {
+  const busy = !(await isPortFree(desiredWebPort, "127.0.0.1"));
+  if (busy) {
+    logLine(`[dev:headless-web] Port ${desiredWebPort} in use, killing existing process...`);
+    killProcessOnPort(desiredWebPort);
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+}
+
 const host = process.env.OPENWORK_HOST ?? "0.0.0.0";
 const viteHost = process.env.VITE_HOST ?? process.env.HOST ?? host;
 const publicHost = process.env.OPENWORK_PUBLIC_HOST ?? null;
@@ -105,8 +162,8 @@ const openworkPort = await resolvePort(process.env.OPENWORK_PORT, "127.0.0.1");
 const webPort = await resolvePort(process.env.OPENWORK_WEB_PORT, "127.0.0.1");
 const openworkToken = process.env.OPENWORK_TOKEN ?? randomUUID();
 const openworkHostToken = process.env.OPENWORK_HOST_TOKEN ?? randomUUID();
-const openworkServerBin = path.join(cwd, "packages/server/dist/bin/openwork-server");
-const opencodeRouterBin = path.join(cwd, "packages/opencode-router/dist/bin/opencode-router");
+const openworkServerBin = path.join(cwd, "packages/server/dist/bin", `maya-server${exe}`);
+const opencodeRouterBin = path.join(cwd, "packages/opencode-router/dist/bin", `opencode-router${exe}`);
 
 const ensureOpenworkServer = async () => {
   try {
@@ -115,15 +172,15 @@ const ensureOpenworkServer = async () => {
     if (!autoBuildEnabled) {
       logLine(`[dev:headless-web] Missing OpenWork server binary at ${openworkServerBin}`);
       logLine("[dev:headless-web] Auto-build disabled (OPENWORK_DEV_HEADLESS_WEB_AUTOBUILD=0)");
-      logLine("[dev:headless-web] Run: pnpm --filter openwork-server build:bin");
+      logLine("[dev:headless-web] Run: pnpm --filter maya-server build:bin");
       logLine("[dev:headless-web] Or unset/enable OPENWORK_DEV_HEADLESS_WEB_AUTOBUILD to auto-build.");
       process.exit(1);
     }
 
     logLine(`[dev:headless-web] Missing OpenWork server binary at ${openworkServerBin}`);
-    logLine("[dev:headless-web] Auto-building: pnpm --filter openwork-server build:bin");
+    logLine("[dev:headless-web] Auto-building: pnpm --filter maya-server build:bin");
     try {
-      await runCommand("pnpm", ["--filter", "openwork-server", "build:bin"]);
+      await runCommand("pnpm", ["--filter", "maya-server", "build:bin"]);
       await access(openworkServerBin);
     } catch (error) {
       logLine(`[dev:headless-web] Auto-build failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -203,28 +260,11 @@ logLine(`[dev:headless-web] OPENWORK_HOST_TOKEN: ${openworkHostToken}`);
 logLine(`[dev:headless-web] Web logs: ${path.relative(cwd, path.join(tmpDir, "dev-web.log"))}`);
 logLine(`[dev:headless-web] Headless logs: ${path.relative(cwd, path.join(tmpDir, "dev-headless.log"))}`);
 
-const webProcess = spawnLogged(
-  "pnpm",
-  [
-    "--filter",
-    "@different-ai/openwork-ui",
-    "exec",
-    "vite",
-    "--host",
-    viteHost,
-    "--port",
-    String(webPort),
-    "--strictPort",
-  ],
-  path.join(tmpDir, "dev-web.log"),
-  viteEnv,
-);
-
 const headlessProcess = spawnLogged(
   "pnpm",
   [
     "--filter",
-    "openwork-orchestrator",
+    "maya-orchestrator",
     "dev",
     "--",
     "start",
@@ -248,6 +288,49 @@ const headlessProcess = spawnLogged(
   ],
   path.join(tmpDir, "dev-headless.log"),
   headlessEnv,
+);
+
+const waitForHealth = async (url: string, timeoutMs = 90_000): Promise<boolean> => {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return true;
+    } catch {
+      // ignore
+    }
+    await new Promise((r) => setTimeout(r, 800));
+  }
+  return false;
+};
+
+logLine("[dev:headless-web] Waiting for OpenWork server to be ready...");
+const healthy = await waitForHealth(`${openworkUrl}/health`);
+if (!healthy) {
+  logLine("[dev:headless-web] OpenWork server did not become healthy in time. Check tmp/dev-headless.log");
+  headlessProcess.kill("SIGTERM");
+  process.exit(1);
+}
+logLine("[dev:headless-web] OpenWork server ready, starting web UI...");
+
+killProcessOnPort(webPort);
+await new Promise((r) => setTimeout(r, 1500));
+
+const webProcess = spawnLogged(
+  "pnpm",
+  [
+    "--filter",
+    "@different-ai/openwork-ui",
+    "run",
+    "dev",
+    "--",
+    "--host",
+    viteHost,
+    "--port",
+    String(webPort),
+  ],
+  path.join(tmpDir, "dev-web.log"),
+  viteEnv,
 );
 
 const stopAll = (signal: NodeJS.Signals) => {

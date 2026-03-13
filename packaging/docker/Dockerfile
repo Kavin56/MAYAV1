@@ -1,7 +1,11 @@
+# Production Dockerfile for MAYA Server
+# 
+# This builds the MAYA orchestrator from local source
+# For production, you would publish packages to npm first
+
 FROM node:22-bookworm-slim
 
-ARG OPENWORK_ORCHESTRATOR_VERSION=0.11.22
-
+# Install system dependencies
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -11,38 +15,46 @@ RUN apt-get update \
     unzip \
   && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g "openwork-orchestrator@${OPENWORK_ORCHESTRATOR_VERSION}"
+# Install bun
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
 
-# Persistent directories (mount volumes here on PaaS/SSH).
-ENV OPENWORK_DATA_DIR=/data/openwork-orchestrator
-ENV OPENWORK_SIDECAR_DIR=/data/sidecars
+# Set working directory
+WORKDIR /app
 
-# The workspace is mounted from the host/volume.
-ENV OPENWORK_WORKSPACE=/workspace
+# Copy package files
+COPY packages/server/package.json packages/server/package.json
+COPY packages/orchestrator/package.json packages/orchestrator/package.json
 
-# OpenWork host contract surface.
+# Install dependencies
+RUN npm install -g typescript
+
+# Copy source
+COPY packages/server packages/server
+COPY packages/orchestrator packages/orchestrator
+COPY packages/opencode-router packages/opencode-router
+
+# Build the server
+WORKDIR /app/packages/server
+RUN bun build --compile src/cli.ts --outfile /usr/local/bin/maya-server
+
+# Build the orchestrator
+WORKDIR /app/packages/orchestrator
+RUN bun build --compile src/cli.ts --outfile /usr/local/bin/maya
+
+# Go back to app dir
+WORKDIR /app
+
+# Persistent directories
+ENV MAYA_DATA_DIR=/data/maya-orchestrator
+ENV MAYA_SIDECAR_DIR=/data/sidecars
+ENV MAYA_WORKSPACE=/workspace
+
+# Expose ports
 EXPOSE 8787
-
-# Optional: opencode-router health (only relevant if you enable the router).
 EXPOSE 3005
 
 VOLUME ["/workspace", "/data"]
 
-# Defaults:
-# - OpenWork server is public (0.0.0.0:8787)
-# - OpenCode stays internal (127.0.0.1:4096)
-# - OpenWork server proxies OpenCode via localhost
-# - OpenCode Router disabled by default
-CMD [
-  "openwork",
-  "serve",
-  "--workspace", "/workspace",
-  "--openwork-host", "0.0.0.0",
-  "--openwork-port", "8787",
-  "--opencode-host", "127.0.0.1",
-  "--opencode-port", "4096",
-  "--connect-host", "127.0.0.1",
-  "--cors", "*",
-  "--approval", "manual",
-  "--no-opencode-router"
-]
+# Default command - uses environment variables
+CMD ["maya", "serve"]

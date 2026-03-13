@@ -1,16 +1,16 @@
 {
-  "name": "openwork-server",
-  "version": "0.11.121",
-  "description": "Filesystem-backed API for OpenWork remote clients",
+  "name": "maya-server",
+  "version": "1.3.4",
+  "description": "Filesystem-backed API for MAYA remote clients",
   "type": "module",
   "bin": {
-    "openwork-server": "dist/bin/openwork-server"
+    "maya-server": "dist/bin/maya-server"
   },
   "scripts": {
     "dev": "bun src/cli.ts",
     "test": "bun test",
     "build": "tsc -p tsconfig.json",
-    "build:bin": "bun build --compile src/cli.ts --outfile dist/bin/openwork-server",
+    "build:bin": "bun build --compile src/cli.ts --outfile dist/bin/maya-server",
     "build:bin:all": "bun ./script/build.ts --outdir dist/bin --target bun-darwin-arm64 --target bun-darwin-x64 --target bun-linux-x64 --target bun-linux-arm64 --target bun-windows-x64",
     "start": "bun dist/cli.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -22,15 +22,15 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/different-ai/openwork.git",
+    "url": "git+https://github.com/different-ai/maya.git",
     "directory": "packages/server"
   },
-  "homepage": "https://github.com/different-ai/openwork/tree/dev/packages/server",
+  "homepage": "https://github.com/different-ai/maya/tree/dev/packages/server",
   "bugs": {
-    "url": "https://github.com/different-ai/openwork/issues"
+    "url": "https://github.com/different-ai/maya/issues"
   },
   "keywords": [
-    "openwork",
+    "maya",
     "server",
     "opencode",
     "headless",

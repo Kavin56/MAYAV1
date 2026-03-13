@@ -3,9 +3,11 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount }
 import type { HubSkillCard, SkillCard } from "../types";
 
 import Button from "../components/button";
-import { Edit2, FolderOpen, Link2, Loader2, Package, Plus, RefreshCw, Search, Sparkles, Trash2, Upload } from "lucide-solid";
+import { Edit2, FolderOpen, Github, Link2, Loader2, Package, Plus, RefreshCw, Search, Sparkles, Trash2, Upload } from "lucide-solid";
 import { currentLocale, t } from "../../i18n";
 import { DEFAULT_OPENWORK_PUBLISHER_BASE_URL, publishOpenworkBundleJson } from "../lib/publisher";
+import GitCloneModal from "../components/git-clone-modal";
+import { cloneGithubSkill } from "../lib/tauri";
 
 type InstallResult = { ok: boolean; message: string };
 
@@ -29,6 +31,7 @@ const OPENWORK_DEFAULT_SKILL_NAMES = new Set([
 
 export type SkillsViewProps = {
   workspaceName: string;
+  activeWorkspaceRoot: string;
   busy: boolean;
   canInstallSkillCreator: boolean;
   canUseDesktopTools: boolean;
@@ -73,6 +76,8 @@ export default function SkillsView(props: SkillsViewProps) {
   const [installLinkBusy, setInstallLinkBusy] = createSignal(false);
   const [installLinkError, setInstallLinkError] = createSignal<string | null>(null);
   const [installLinkBundle, setInstallLinkBundle] = createSignal<SkillBundleV1 | null>(null);
+  const [installLinkIsGithub, setInstallLinkIsGithub] = createSignal(false);
+  const [installLinkGithubResult, setInstallLinkGithubResult] = createSignal<{ ok: boolean; message: string } | null>(null);
 
   const [selectedSkill, setSelectedSkill] = createSignal<SkillCard | null>(null);
   const [selectedContent, setSelectedContent] = createSignal("");
@@ -83,6 +88,8 @@ export default function SkillsView(props: SkillsViewProps) {
   const [toast, setToast] = createSignal<string | null>(null);
   const [installingSkillCreator, setInstallingSkillCreator] = createSignal(false);
   const [installingHubSkill, setInstallingHubSkill] = createSignal<string | null>(null);
+
+  const [gitCloneOpen, setGitCloneOpen] = createSignal(false);
 
   onMount(() => {
     props.refreshHubSkills();
@@ -189,6 +196,14 @@ export default function SkillsView(props: SkillsViewProps) {
       onClick: () => void | Promise<void>;
       disabled: boolean;
     }> = [
+      {
+        id: "github-clone",
+        title: "Add from GitHub",
+        description: "Clone a skill from a GitHub repository",
+        icon: Github,
+        onClick: () => setGitCloneOpen(true),
+        disabled: props.busy || !props.canUseDesktopTools,
+      },
       {
         id: "import-local",
         title: translate("skills.import_local"),
@@ -302,6 +317,13 @@ export default function SkillsView(props: SkillsViewProps) {
     setInstallLinkBusy(false);
     setInstallLinkError(null);
     setInstallLinkBundle(null);
+    setInstallLinkIsGithub(false);
+    setInstallLinkGithubResult(null);
+  };
+
+  const isGithubUrl = (url: string) => {
+    const trimmed = url.trim().toLowerCase();
+    return trimmed.includes("github.com") && (trimmed.includes("/") || trimmed.includes(":"));
   };
 
   const previewInstallLink = async () => {
@@ -315,7 +337,16 @@ export default function SkillsView(props: SkillsViewProps) {
     setInstallLinkBusy(true);
     setInstallLinkError(null);
     setInstallLinkBundle(null);
+    setInstallLinkGithubResult(null);
+
     try {
+      if (isGithubUrl(raw)) {
+        setInstallLinkIsGithub(true);
+        setInstallLinkGithubResult({ ok: true, message: "Ready to clone from GitHub" });
+        setInstallLinkBusy(false);
+        return;
+      }
+
       const url = new URL(raw);
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), 15_000);
@@ -353,6 +384,39 @@ export default function SkillsView(props: SkillsViewProps) {
       }
     } catch (e) {
       setInstallLinkError(maskError(e));
+    } finally {
+      setInstallLinkBusy(false);
+    }
+  };
+
+  const installFromGithubLink = async () => {
+    const raw = installLinkUrl().trim();
+    if (!isGithubUrl(raw)) return;
+    if (installLinkBusy()) return;
+
+    setInstallLinkBusy(true);
+    setInstallLinkGithubResult(null);
+
+    try {
+      const result = await cloneGithubSkill(raw, null, props.activeWorkspaceRoot);
+      setInstallLinkGithubResult({
+        ok: result.ok,
+        message: result.message,
+      });
+      if (result.ok && result.skillName) {
+        props.refreshSkills({ force: true });
+        setTimeout(() => {
+          setInstallLinkOpen(false);
+          setInstallLinkUrl("");
+          setInstallLinkGithubResult(null);
+          setInstallLinkIsGithub(false);
+        }, 1500);
+      }
+    } catch (e) {
+      setInstallLinkGithubResult({
+        ok: false,
+        message: e instanceof Error ? e.message : "Clone failed",
+      });
     } finally {
       setInstallLinkBusy(false);
     }
@@ -1076,58 +1140,100 @@ export default function SkillsView(props: SkillsViewProps) {
                 }}
               </Show>
 
+              <Show when={installLinkIsGithub()}>
+                <div class="rounded-xl border border-green-7/20 bg-green-1/40 p-4 space-y-2">
+                  <div class="flex items-center gap-2 text-green-11">
+                    <Github class="w-4 h-4" />
+                    <span class="text-xs font-semibold">GitHub Repository Detected</span>
+                  </div>
+                  <div class="text-xs text-dls-secondary">
+                    This will clone the repository and install it as a skill.
+                  </div>
+                  <Show when={installLinkGithubResult()}>
+                    {(result) => (
+                      <div class={`text-xs ${result().ok ? "text-green-11" : "text-red-11"}`}>
+                        {result().message}
+                      </div>
+                    )}
+                  </Show>
+                </div>
+              </Show>
+
               <div class="flex justify-end gap-2">
                 <Button variant="outline" onClick={closeInstallFromLink} disabled={installLinkBusy()}>
                   {translate("common.cancel")}
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => void previewInstallLink()}
-                  disabled={installLinkBusy() || !installLinkUrl().trim()}
-                >
-                  {installLinkBusy() && !installLinkBundle() ? "Loading…" : "Preview"}
-                </Button>
-                <Show when={installLinkBundle()} keyed>
-                  {(bundle) => {
-                    const conflict = installedNames().has(bundle.name.trim());
-                    return (
-                      <Show
-                        when={conflict}
-                        fallback={
-                          <Button
-                            variant="secondary"
-                            onClick={() => void installFromPreview("overwrite")}
-                            disabled={installLinkBusy()}
+                <Show when={installLinkIsGithub()} fallback={
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => void previewInstallLink()}
+                      disabled={installLinkBusy() || !installLinkUrl().trim()}
+                    >
+                      {installLinkBusy() && !installLinkBundle() ? "Loading…" : "Preview"}
+                    </Button>
+                    <Show when={installLinkBundle()} keyed>
+                      {(bundle) => {
+                        const conflict = installedNames().has(bundle.name.trim());
+                        return (
+                          <Show
+                            when={conflict}
+                            fallback={
+                              <Button
+                                variant="secondary"
+                                onClick={() => void installFromPreview("overwrite")}
+                                disabled={installLinkBusy()}
+                              >
+                                {installLinkBusy() ? "Installing…" : "Install"}
+                              </Button>
+                            }
                           >
-                            {installLinkBusy() ? "Installing…" : "Install"}
-                          </Button>
-                        }
-                      >
-                        <div class="flex gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => void installFromPreview("keep-both")}
-                            disabled={installLinkBusy()}
-                          >
-                            {installLinkBusy() ? "Installing…" : "Keep both"}
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            onClick={() => void installFromPreview("overwrite")}
-                            disabled={installLinkBusy()}
-                          >
-                            {installLinkBusy() ? "Installing…" : "Overwrite"}
-                          </Button>
-                        </div>
-                      </Show>
-                    );
-                  }}
+                            <div class="flex gap-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => void installFromPreview("keep-both")}
+                                disabled={installLinkBusy()}
+                              >
+                                {installLinkBusy() ? "Installing…" : "Keep both"}
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                onClick={() => void installFromPreview("overwrite")}
+                                disabled={installLinkBusy()}
+                              >
+                                {installLinkBusy() ? "Installing…" : "Overwrite"}
+                              </Button>
+                            </div>
+                          </Show>
+                        );
+                      }}
+                    </Show>
+                  </>
+                }>
+                  <Button
+                    variant="secondary"
+                    onClick={() => void installFromGithubLink()}
+                    disabled={installLinkBusy()}
+                  >
+                    {installLinkBusy() ? "Cloning…" : "Clone & Install"}
+                  </Button>
                 </Show>
               </div>
             </div>
           </div>
         </div>
       </Show>
+
+      <GitCloneModal
+        open={gitCloneOpen()}
+        onClose={() => setGitCloneOpen(false)}
+        onSuccess={(skillName) => {
+          setGitCloneOpen(false);
+          props.refreshSkills({ force: true });
+          setToast(`Skill "${skillName}" installed successfully!`);
+        }}
+        activeWorkspaceRoot={props.activeWorkspaceRoot}
+      />
     </section>
   );
 }

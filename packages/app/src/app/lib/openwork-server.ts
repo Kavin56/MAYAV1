@@ -656,27 +656,38 @@ export function hydrateOpenworkServerSettingsFromEnv() {
     const current = readOpenworkServerSettings();
     const next: OpenworkServerSettings = { ...current };
     let changed = false;
+    const isHeadlessWeb = Boolean(envUrl && envToken);
 
-    if (!current.urlOverride && envUrl) {
-      next.urlOverride = normalizeOpenworkServerUrl(envUrl) ?? undefined;
-      changed = true;
+    if (envUrl && (isHeadlessWeb || !current.urlOverride)) {
+      const normalized = normalizeOpenworkServerUrl(envUrl) ?? undefined;
+      if (normalized !== current.urlOverride) {
+        next.urlOverride = normalized;
+        changed = true;
+      }
     }
-
-    if (!current.portOverride && envPort) {
+    if (envPort && (isHeadlessWeb || !current.portOverride)) {
       const parsed = Number(envPort);
-      if (Number.isFinite(parsed) && parsed > 0) {
+      if (Number.isFinite(parsed) && parsed > 0 && parsed !== current.portOverride) {
         next.portOverride = parsed;
         changed = true;
       }
     }
-
-    if (!current.token && envToken) {
-      next.token = envToken;
-      changed = true;
+    if (envToken && (isHeadlessWeb || !current.token)) {
+      if (envToken !== (current.token ?? "")) {
+        next.token = envToken;
+        changed = true;
+      }
     }
 
     if (changed) {
       writeOpenworkServerSettings(next);
+    }
+    if (envToken && isHeadlessWeb && typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("maya.server.token", envToken);
+      } catch {
+        // ignore
+      }
     }
   } catch {
     // ignore

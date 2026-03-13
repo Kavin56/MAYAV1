@@ -12,6 +12,15 @@ _worktrees/
 # Tauri/Rust
 packages/desktop/src-tauri/target/
 packages/desktop/src-tauri/sidecars/
+# Large sidecar binaries (built locally, not for repo)
+packages/desktop/src-tauri/*.exe
+packages/desktop/src-tauri/versions.json
+packages/desktop/src-tauri/versions.json-*
+
+# Logs and temp (large or ephemeral)
+logs/
+build_output.log
+_tmp_*
 
 # Env
 .env

@@ -1,9 +1,9 @@
 {
   "name": "@different-ai/openwork-workspace",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.3.4",
   "scripts": {
-    "dev": "pnpm --filter @different-ai/openwork dev",
+    "dev": "pnpm --filter maya-desktop dev",
     "dev:ui": "pnpm --filter @different-ai/openwork-ui dev",
     "dev:web": "pnpm --filter @different-ai/openwork-ui dev",
     "dev:headless-web": "bun scripts/dev-headless-web.ts",
@@ -31,7 +31,7 @@
     "release:prepare:dry": "node scripts/release/prepare.mjs --dry-run",
     "release:ship": "node scripts/release/ship.mjs",
     "release:ship:watch": "node scripts/release/ship.mjs --watch",
-    "tauri": "pnpm --filter @different-ai/openwork exec tauri"
+    "tauri": "pnpm --filter maya-desktop exec tauri"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -44,5 +44,9 @@
       "@solidjs/router@0.15.4": "patches/@solidjs__router@0.15.4.patch"
     }
   },
-  "packageManager": "pnpm@10.27.0"
+  "packageManager": "pnpm@10.27.0",
+  "devDependencies": {
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5"
+  }
 }

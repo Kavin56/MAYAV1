@@ -107,14 +107,16 @@ export default function OnboardingView(props: OnboardingViewProps) {
     return parts.join("\n\n");
   };
 
+  const logoSrc = () => "/maya-v1-logo.png";
+
   return (
     <Switch>
       <Match when={props.onboardingStep === "connecting"}>
         <div class="min-h-screen flex flex-col items-center justify-center bg-gray-1 text-gray-12 p-6 relative overflow-hidden">
           <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-2 via-gray-1 to-gray-1 opacity-50" />
-          <div class="z-10 flex flex-col items-center gap-6">
+          <div class="z-10 flex flex-col items-center gap-8">
             <div class="relative">
-              <OpenWorkLogo size={40} />
+              <OpenWorkLogo size={120} />
             </div>
             <div class="text-center">
               <h2 class="text-xl font-medium mb-2">
@@ -156,9 +158,9 @@ export default function OnboardingView(props: OnboardingViewProps) {
           <div class="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-gray-2 to-transparent opacity-20 pointer-events-none" />
 
           <div class="max-w-lg w-full z-10 space-y-6">
-              <div class="text-center space-y-2">
+              <div class="text-center space-y-4">
                 <div class="">
-                  <OpenWorkLogo size={48} />
+                  <OpenWorkLogo size={144} />
                 </div>
               <h2 class="text-2xl font-bold tracking-tight">
                 {props.workspaces.length <= 1 ? translate("onboarding.create_first_workspace") : translate("onboarding.create_workspace")}
@@ -209,7 +211,7 @@ export default function OnboardingView(props: OnboardingViewProps) {
               </div>
 
               <OnboardingWorkspaceSelector
-                defaultPath="~/OpenWork/Worker"
+                defaultPath="~/MAYA/Worker"
                 onConfirm={props.onCreateWorkspace}
                 onPickFolder={props.onPickWorkspaceFolder}
               />
@@ -589,12 +591,12 @@ export default function OnboardingView(props: OnboardingViewProps) {
           <div class="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-gray-2 to-transparent opacity-20 pointer-events-none" />
 
           <div class="max-w-xl w-full z-10 space-y-12">
-            <div class="text-center space-y-4">
-              <div class="flex items-center justify-center gap-3 mb-6">
+            <div class="text-center space-y-6">
+              <div class="flex flex-col items-center justify-center gap-4 mb-6">
                 <div class="">
-                  <OpenWorkLogo size={48} />
+                  <img src={logoSrc()} style={{ width: "128px", height: "128px" }} class="drop-shadow-lg" alt="MAYA" />
                 </div>
-                <h1 class="text-3xl font-bold tracking-tight text-gray-12">OpenWork</h1>
+                <h1 class="text-4xl font-extrabold tracking-tight text-gray-12">MAYA</h1>
               </div>
               <h2 class="text-xl text-gray-11">{translate("onboarding.welcome_title")}</h2>
             </div>

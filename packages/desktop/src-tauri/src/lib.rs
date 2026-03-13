@@ -4,7 +4,7 @@ mod config;
 mod engine;
 mod fs;
 mod opencode_router;
-mod openwork_server;
+mod maya_server;
 mod opkg;
 mod orchestrator;
 mod paths;
@@ -29,7 +29,7 @@ use commands::opencode_router::{
     opencodeRouter_config_set, opencodeRouter_info, opencodeRouter_start, opencodeRouter_status,
     opencodeRouter_stop,
 };
-use commands::openwork_server::openwork_server_info;
+use commands::maya_server::maya_server_info;
 use commands::opkg::{import_skill, opkg_install};
 use commands::orchestrator::{
     orchestrator_instance_dispose, orchestrator_start_detached, orchestrator_status,
@@ -38,7 +38,8 @@ use commands::orchestrator::{
 };
 use commands::scheduler::{scheduler_delete_job, scheduler_list_jobs};
 use commands::skills::{
-    install_skill_template, list_local_skills, read_local_skill, uninstall_skill, write_local_skill,
+    clone_github_skill, install_skill_template, list_local_skills, read_local_skill, uninstall_skill,
+    write_local_skill,
 };
 use commands::updater::updater_environment;
 use commands::window::set_window_decorations;
@@ -50,7 +51,7 @@ use commands::workspace::{
 };
 use engine::manager::EngineManager;
 use opencode_router::manager::OpenCodeRouterManager;
-use openwork_server::manager::OpenworkServerManager;
+use maya_server::manager::MayaServerManager;
 use orchestrator::manager::OrchestratorManager;
 use tauri::Manager;
 use workspace::watch::WorkspaceWatchState;
@@ -62,8 +63,8 @@ fn stop_managed_services(app_handle: &tauri::AppHandle) {
     if let Ok(mut orchestrator) = app_handle.state::<OrchestratorManager>().inner.lock() {
         OrchestratorManager::stop_locked(&mut orchestrator);
     }
-    if let Ok(mut openwork_server) = app_handle.state::<OpenworkServerManager>().inner.lock() {
-        OpenworkServerManager::stop_locked(&mut openwork_server);
+    if let Ok(mut maya_server) = app_handle.state::<MayaServerManager>().inner.lock() {
+        MayaServerManager::stop_locked(&mut maya_server);
     }
     if let Ok(mut opencode_router) = app_handle.state::<OpenCodeRouterManager>().inner.lock() {
         OpenCodeRouterManager::stop_locked(&mut opencode_router);
@@ -86,9 +87,16 @@ pub fn run() {
     let app = builder
         .manage(EngineManager::default())
         .manage(OrchestratorManager::default())
-        .manage(OpenworkServerManager::default())
+        .manage(MayaServerManager::default())
         .manage(OpenCodeRouterManager::default())
         .manage(WorkspaceWatchState::default())
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             engine_start,
             engine_stop,
@@ -102,7 +110,7 @@ pub fn run() {
             sandbox_doctor,
             sandbox_stop,
             sandbox_cleanup_openwork_containers,
-            openwork_server_info,
+            maya_server_info,
             opencodeRouter_info,
             opencodeRouter_start,
             opencodeRouter_stop,
@@ -130,6 +138,7 @@ pub fn run() {
             read_local_skill,
             uninstall_skill,
             write_local_skill,
+            clone_github_skill,
             read_opencode_config,
             write_opencode_config,
             updater_environment,
@@ -143,11 +152,11 @@ pub fn run() {
             set_window_decorations
         ])
         .build(tauri::generate_context!())
-        .expect("error while building OpenWork");
+        .expect("error while building MAYA");
 
     // Best-effort cleanup on app exit. Without this, background sidecars can keep
     // running after the UI quits (especially during dev), leading to multiple
-    // orchestrator/opencode/openwork-server processes and stale ports.
+    // orchestrator/opencode/maya-server processes and stale ports.
     app.run(|app_handle, event| match event {
         tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
             stop_managed_services(&app_handle);

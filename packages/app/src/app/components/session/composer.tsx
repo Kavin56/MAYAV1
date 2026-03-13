@@ -5,6 +5,7 @@ import { ArrowUp, AtSign, Check, ChevronDown, File as FileIcon, Paperclip, Squar
 
 import type { ComposerAttachment, ComposerDraft, ComposerPart, PromptMode, SlashCommandOption } from "../../types";
 import { perfNow, recordPerfLog } from "../../lib/perf-log";
+import { currentLocale, t } from "../../../i18n";
 
 type MentionOption = {
   id: string;
@@ -58,6 +59,8 @@ type ComposerProps = {
   attachmentsEnabled: boolean;
   attachmentsDisabledReason: string | null;
   listCommands: () => Promise<SlashCommandOption[]>;
+  showBuildMode?: boolean;
+  setShowBuildMode?: (show: boolean) => void;
 };
 
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
@@ -509,6 +512,13 @@ export default function Composer(props: ComposerProps) {
   const [slashIndex, setSlashIndex] = createSignal(0);
   const [slashCommands, setSlashCommands] = createSignal<SlashCommandOption[]>([]);
   const [slashLoaded, setSlashLoaded] = createSignal(false);
+  const [showBuildMode, setShowBuildMode] = createSignal(props.showBuildMode ?? false);
+
+  createEffect(() => {
+    if (props.showBuildMode !== undefined) {
+      setShowBuildMode(props.showBuildMode);
+    }
+  });
 
   onMount(() => {
     queueMicrotask(() => focusEditorEnd());
@@ -1515,8 +1525,8 @@ export default function Composer(props: ComposerProps) {
     const handler = () => {
       editorRef?.focus();
     };
-    window.addEventListener("openwork:focusPrompt", handler);
-    onCleanup(() => window.removeEventListener("openwork:focusPrompt", handler));
+    window.addEventListener("maya:focusPrompt", handler);
+    onCleanup(() => window.removeEventListener("maya:focusPrompt", handler));
   });
 
   onCleanup(() => {
@@ -1721,9 +1731,34 @@ export default function Composer(props: ComposerProps) {
                   </Show>
 
                   <div class="relative">
+                    <Show when={showBuildMode()}>
+                      <div class="mb-3 px-4 py-3 bg-amber-2 border border-amber-6 rounded-xl">
+                        <div class="flex items-start gap-3">
+                          <div class="w-8 h-8 rounded-lg bg-amber-4 flex items-center justify-center shrink-0">
+                            <Zap size={16} class="text-amber-11" />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium text-amber-11">{t("session.build_mode_title", currentLocale())}</div>
+                            <div class="text-xs text-amber-10 mt-0.5">
+                              {t("session.build_mode_description", currentLocale())}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowBuildMode(false);
+                              props.setShowBuildMode?.(false);
+                            }}
+                            class="p-1 text-amber-9 hover:text-amber-11"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </Show>
                     <Show when={!hasDraftContent()}>
                       <div class="absolute left-0 top-0 text-dls-secondary text-sm leading-relaxed pointer-events-none">
-                        Ask OpenWork...
+                        {showBuildMode() ? t("session.build_mode_placeholder", currentLocale()) : t("session.placeholder", currentLocale())}
                       </div>
                     </Show>
                     <div
@@ -1919,7 +1954,24 @@ export default function Composer(props: ComposerProps) {
                           </Show>
                         </div>
                       </div>
-                      <div class="flex items-center gap-3 text-dls-secondary">
+                      <div class="flex items-center gap-2 text-dls-secondary">
+                        <Show when={!props.isStreaming}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newValue = !showBuildMode();
+                              setShowBuildMode(newValue);
+                              props.setShowBuildMode?.(newValue);
+                            }}
+                            class={`p-1.5 rounded-lg transition-colors ${showBuildMode() 
+                              ? "bg-amber-5 text-amber-11" 
+                              : "hover:bg-dls-hover text-amber-9"
+                            }`}
+                            title={t("session.build_mode_title", currentLocale())}
+                          >
+                            <Zap size={16} />
+                          </button>
+                        </Show>
                         <Show
                           when={props.isStreaming}
                           fallback={

@@ -36,7 +36,7 @@ export function ServerProvider(props: ParentProps & { defaultUrl: string }) {
 
   const readStoredList = () => {
     try {
-      const raw = window.localStorage.getItem("openwork.server.list");
+      const raw = window.localStorage.getItem("maya.server.list");
       const parsed = raw ? (JSON.parse(raw) as unknown) : [];
       return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
     } catch {
@@ -46,7 +46,7 @@ export function ServerProvider(props: ParentProps & { defaultUrl: string }) {
 
   const readStoredActive = () => {
     try {
-      const stored = window.localStorage.getItem("openwork.server.active");
+      const stored = window.localStorage.getItem("maya.server.active");
       return typeof stored === "string" ? stored : "";
     } catch {
       return "";
@@ -90,8 +90,8 @@ export function ServerProvider(props: ParentProps & { defaultUrl: string }) {
     if (typeof window === "undefined") return;
 
     try {
-      window.localStorage.setItem("openwork.server.list", JSON.stringify(list()));
-      window.localStorage.setItem("openwork.server.active", active());
+      window.localStorage.setItem("maya.server.list", JSON.stringify(list()));
+      window.localStorage.setItem("maya.server.active", active());
     } catch {
       // ignore
     }
@@ -101,7 +101,7 @@ export function ServerProvider(props: ParentProps & { defaultUrl: string }) {
 
   const readOpenworkToken = () => {
     try {
-      return (window.localStorage.getItem("openwork.server.token") ?? "").trim();
+      return (window.localStorage.getItem("maya.server.token") ?? "").trim();
     } catch {
       return "";
     }

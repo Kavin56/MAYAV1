@@ -54,7 +54,7 @@ export type SidebarProps = {
 export default function SessionSidebar(props: SidebarProps) {
   const MAX_SESSIONS_PREVIEW = 8;
   const realTodos = createMemo(() => props.todos.filter((todo) => todo.content.trim()));
-  const WORKSPACE_COLLAPSE_KEY = "openwork.workspace-collapse.v1";
+  const WORKSPACE_COLLAPSE_KEY = "maya.workspace-collapse.v1";
   const readWorkspaceCollapse = () => {
     if (typeof window === "undefined") return {} as Record<string, boolean>;
     try {

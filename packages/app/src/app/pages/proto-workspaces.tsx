@@ -149,9 +149,9 @@ export default function ProtoWorkspacesView() {
             <div class="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-gray-2 to-transparent opacity-20 pointer-events-none" />
             <div class="max-w-xl w-full z-10 space-y-10">
               <div class="text-center space-y-4">
-                <div class="flex items-center justify-center gap-3 mb-6">
-                  <OpenWorkLogo size={48} />
-                  <h2 class="text-3xl font-bold tracking-tight text-gray-12">OpenWork</h2>
+                <div class="flex flex-col items-center justify-center gap-4 mb-6">
+                  <OpenWorkLogo size={144} />
+                  <h2 class="text-4xl font-extrabold tracking-tight text-gray-12">OpenWork</h2>
                 </div>
                 <h3 class="text-xl text-gray-11">Choose how to connect</h3>
               </div>
@@ -215,9 +215,9 @@ export default function ProtoWorkspacesView() {
           <div class="flex h-[70vh] bg-gray-1 text-gray-12 overflow-hidden rounded-3xl border border-gray-6">
             <aside class="w-60 border-r border-gray-6 p-6 hidden md:flex flex-col justify-between bg-gray-1">
               <div>
-                <div class="flex items-center gap-3 mb-10 px-2">
-                  <OpenWorkLogo size={28} />
-                  <span class="font-bold text-lg tracking-tight">OpenWork</span>
+                <div class="flex items-center justify-center gap-3 mb-10 px-2">
+                  <OpenWorkLogo size={84} />
+                  <span class="font-extrabold text-2xl tracking-tight">OpenWork</span>
                 </div>
                 <nav class="space-y-1">
                   <For each={navItems}>

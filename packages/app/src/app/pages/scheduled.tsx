@@ -442,45 +442,45 @@ export default function ScheduledTasksView(props: ScheduledTasksViewProps) {
     if (props.source === "remote") return props.sourceReady;
     return (
       isTauriRuntime() &&
-      !props.isWindows &&
+      // !props.isWindows && // MAYA: Enable on Windows
       props.schedulerInstalled &&
       !schedulerInstallRequested()
     );
   });
   const schedulerGateActive = createMemo(() => {
     if (props.source !== "local") return false;
-    if (!isTauriRuntime() || props.isWindows) return false;
+    if (!isTauriRuntime()) return false; // MAYA: Enable on Windows
     return !props.schedulerInstalled || schedulerInstallRequested();
   });
   const schedulerGateMode = createMemo(() => (props.schedulerInstalled ? "reload" : "install"));
   const automationDisabled = createMemo(() => props.newTaskDisabled || schedulerGateActive());
   const supportNote = createMemo(() => {
     if (props.source === "remote") {
-      return props.sourceReady ? null : "OpenWork server unavailable. Connect to sync scheduled tasks.";
+      return props.sourceReady ? null : "MAYA server unavailable. Connect to sync scheduled tasks.";
     }
     if (!isTauriRuntime()) return "Scheduled tasks require the desktop app.";
-    if (props.isWindows) return "Scheduler is not supported on Windows yet.";
+    // if (props.isWindows) return "Scheduler is not supported on Windows yet.";
     if (!props.schedulerInstalled || schedulerInstallRequested()) return null;
     return null;
   });
   const sourceDescription = createMemo(() =>
     props.source === "remote"
-      ? "Automations that run on a schedule from the connected OpenWork server."
+      ? "Automations that run on a schedule from the connected MAYA server."
       : "Automations that run on a schedule from this device."
   );
   const sourceLabel = createMemo(() =>
-    props.source === "remote" ? "From OpenWork server" : "From local scheduler"
+    props.source === "remote" ? "From MAYA server" : "From local scheduler"
   );
-  const schedulerLabel = createMemo(() => (props.source === "remote" ? "OpenWork server" : "Local"));
+  const schedulerLabel = createMemo(() => (props.source === "remote" ? "MAYA server" : "Local"));
   const schedulerHint = createMemo(() =>
     props.source === "remote" ? "Remote instance" : "Launchd or systemd"
   );
   const schedulerUnavailableHint = createMemo(() =>
-    props.source === "remote" ? "OpenWork server unavailable" : "Desktop-only"
+    props.source === "remote" ? "MAYA server unavailable" : "Desktop-only"
   );
   const deleteDescription = createMemo(() =>
     props.source === "remote"
-      ? "This removes the schedule and deletes the job definition from the connected OpenWork server."
+      ? "This removes the schedule and deletes the job definition from the connected MAYA server."
       : "This removes the schedule and deletes the job definition from your machine."
   );
 
@@ -696,12 +696,12 @@ export default function ScheduledTasksView(props: ScheduledTasksViewProps) {
               <div>
                 <div class="text-sm font-semibold text-gray-12">
                   {schedulerGateMode() === "reload"
-                    ? "Reload OpenWork to activate automations"
+                    ? "Reload MAYA to activate automations"
                     : "Install the scheduler to unlock automations"}
                 </div>
                 <div class="mt-1 text-xs text-gray-9">
                   {schedulerGateMode() === "reload"
-                    ? "OpenCode loads plugins at startup. Reload OpenWork to activate opencode-scheduler."
+                    ? "OpenCode loads plugins at startup. Reload MAYA to activate opencode-scheduler."
                     : "Automations run through the opencode-scheduler plugin. Add it to this workspace to enable scheduling."}
                 </div>
               </div>
@@ -719,7 +719,7 @@ export default function ScheduledTasksView(props: ScheduledTasksViewProps) {
                 onClick={() => void props.reloadWorkspaceEngine()}
                 disabled={!props.canReloadWorkspace || props.reloadBusy || !props.schedulerInstalled}
               >
-                {props.reloadBusy ? "Reloading..." : "Reload OpenWork"}
+                {props.reloadBusy ? "Reloading..." : "Reload MAYA"}
               </Button>
               <button
                 type="button"

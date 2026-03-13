@@ -1,11 +1,11 @@
 import type { ModelRef, SuggestedPlugin } from "./types";
 
-export const MODEL_PREF_KEY = "openwork.defaultModel";
-export const SESSION_MODEL_PREF_KEY = "openwork.sessionModels";
-export const THINKING_PREF_KEY = "openwork.showThinking";
-export const VARIANT_PREF_KEY = "openwork.modelVariant";
-export const LANGUAGE_PREF_KEY = "openwork.language";
-export const HIDE_TITLEBAR_PREF_KEY = "openwork.hideTitlebar";
+export const MODEL_PREF_KEY = "maya.defaultModel";
+export const SESSION_MODEL_PREF_KEY = "maya.sessionModels";
+export const THINKING_PREF_KEY = "maya.showThinking";
+export const VARIANT_PREF_KEY = "maya.modelVariant";
+export const LANGUAGE_PREF_KEY = "maya.language";
+export const HIDE_TITLEBAR_PREF_KEY = "maya.hideTitlebar";
 
 export const DEFAULT_MODEL: ModelRef = {
   providerID: "opencode",

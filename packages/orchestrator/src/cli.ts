@@ -78,22 +78,22 @@ type OpenCodeRouterHealthSnapshot = {
 
 const FALLBACK_VERSION = "0.1.0";
 
-declare const __OPENWORK_ORCHESTRATOR_VERSION__: string | undefined;
-const DEFAULT_OPENWORK_PORT = 8787;
+declare const __MAYA_ORCHESTRATOR_VERSION__: string | undefined;
+const DEFAULT_MAYA_PORT = 8787;
 const DEFAULT_APPROVAL_TIMEOUT = 30000;
 const DEFAULT_OPENCODE_USERNAME = "opencode";
 const DEFAULT_OPENCODE_HOT_RELOAD_DEBOUNCE_MS = 700;
 const DEFAULT_OPENCODE_HOT_RELOAD_COOLDOWN_MS = 1500;
 
 const SANDBOX_INTERNAL_OPENCODE_PORT = 4096;
-const SANDBOX_INTERNAL_OPENWORK_PORT = DEFAULT_OPENWORK_PORT;
+const SANDBOX_INTERNAL_MAYA_PORT = DEFAULT_MAYA_PORT;
 // OpenCodeRouter defaults its health server to 3005 when not overridden. In sandbox
 // mode we keep the *internal* port stable and only vary the published host
 // port to avoid collisions.
 const SANDBOX_INTERNAL_OPENCODE_ROUTER_HEALTH_PORT = 3005;
 
 const SANDBOX_OPENCODE_GLOBAL_CONFIG_CONTAINER_PATH = "/persist/.config/opencode";
-const SANDBOX_OPENCODE_GLOBAL_DATA_IMPORT_CONTAINER_PATH = "/persist/.openwork-host-opencode-data";
+const SANDBOX_OPENCODE_GLOBAL_DATA_IMPORT_CONTAINER_PATH = "/persist/.maya-host-opencode-data";
 
 type ParsedArgs = {
   positionals: string[];
@@ -110,7 +110,7 @@ type VersionInfo = {
   sha256: string;
 };
 
-type SidecarName = "openwork-server" | "opencode-router" | "opencode";
+type SidecarName = "maya-server" | "opencode-router" | "opencode";
 
 type SidecarTarget =
   | "darwin-arm64"
@@ -1320,7 +1320,7 @@ async function resolveOpencodeDownload(sidecar: SidecarConfig, expectedVersion?:
         "$ErrorActionPreference = 'Stop'",
         `Expand-Archive -Path ${psQuote(archivePath)} -DestinationPath ${psQuote(extractDir)} -Force`,
       ].join("; ");
-      await runCommand("powershell", ["-NoProfile", "-Command", psScript]);
+      await runCommand("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", ["-NoProfile", "-Command", psScript]);
     } else if (asset.endsWith(".zip")) {
       await runCommand("unzip", ["-q", archivePath, "-d", extractDir]);
     } else if (asset.endsWith(".tar.gz")) {
@@ -1544,10 +1544,10 @@ async function captureCommandOutput(
     | "timeout"
     | "error"
     | {
-        type: "close";
-        code: number | null;
-        signal: NodeJS.Signals | null;
-      };
+      type: "close";
+      code: number | null;
+      signal: NodeJS.Signals | null;
+    };
 
   const timeoutMs = options?.timeoutMs ?? 30_000;
   const result = await Promise.race<CaptureResult>([
@@ -2952,17 +2952,17 @@ async function writeSandboxEntrypoint(options: {
     options.openwork.opencodeRouterEnabled ? `${shQuote(opencodeRouterBin)} serve ${shQuote(workspaceDir)} &` : "",
     options.openwork.opencodeRouterEnabled ? "opencodeRouter_pid=$!" : "",
     `exec ${shQuote(openworkBin)} --host 0.0.0.0 --port ${shQuote(String(SANDBOX_INTERNAL_OPENWORK_PORT))}` +
-      ` --token ${shQuote(options.openwork.token)} --host-token ${shQuote(options.openwork.hostToken)}` +
-      ` --workspace ${shQuote(workspaceDir)}` +
-      ` --approval ${shQuote(options.openwork.approvalMode)}` +
-      ` --approval-timeout ${shQuote(String(options.openwork.approvalTimeoutMs))}` +
-      (options.openwork.readOnly ? " --read-only" : "") +
-      ` --opencode-base-url ${shQuote(`http://127.0.0.1:${SANDBOX_INTERNAL_OPENCODE_PORT}`)}` +
-      ` --opencode-directory ${shQuote(workspaceDir)}` +
-      ` ${openworkAuthArgs}` +
-      ` --log-format ${shQuote(options.openwork.logFormat)}` +
-      (options.openwork.opencodeRouterEnabled ? ` --opencode-router-health-port ${shQuote(String(SANDBOX_INTERNAL_OPENCODE_ROUTER_HEALTH_PORT))}` : "") +
-      (openworkCors ? ` ${openworkCors}` : ""),
+    ` --token ${shQuote(options.openwork.token)} --host-token ${shQuote(options.openwork.hostToken)}` +
+    ` --workspace ${shQuote(workspaceDir)}` +
+    ` --approval ${shQuote(options.openwork.approvalMode)}` +
+    ` --approval-timeout ${shQuote(String(options.openwork.approvalTimeoutMs))}` +
+    (options.openwork.readOnly ? " --read-only" : "") +
+    ` --opencode-base-url ${shQuote(`http://127.0.0.1:${SANDBOX_INTERNAL_OPENCODE_PORT}`)}` +
+    ` --opencode-directory ${shQuote(workspaceDir)}` +
+    ` ${openworkAuthArgs}` +
+    ` --log-format ${shQuote(options.openwork.logFormat)}` +
+    (options.openwork.opencodeRouterEnabled ? ` --opencode-router-health-port ${shQuote(String(SANDBOX_INTERNAL_OPENCODE_ROUTER_HEALTH_PORT))}` : "") +
+    (openworkCors ? ` ${openworkCors}` : ""),
   ]
     .filter(Boolean)
     .join("\n");
@@ -3279,10 +3279,10 @@ async function verifyOpenworkServer(input: {
     return path && normalizeWorkspacePath(path) === expectedPath;
   }) as
     | {
-        id?: string;
-        path?: string;
-        opencode?: { baseUrl?: string; directory?: string; username?: string; password?: string };
-      }
+      id?: string;
+      path?: string;
+      opencode?: { baseUrl?: string; directory?: string; username?: string; password?: string };
+    }
     | undefined;
 
   if (!matched) {
@@ -4225,19 +4225,19 @@ async function runRouterDaemon(args: ParsedArgs) {
     };
 
     try {
-        if (req.method === "GET" && url.pathname === "/health") {
-          send(200, {
-            ok: true,
-            daemon: state.daemon ?? null,
-            opencode: state.opencode ?? null,
-            activeId: state.activeId,
-            workspaceCount: state.workspaces.length,
-            cliVersion: state.cliVersion ?? null,
-            sidecar: state.sidecar ?? null,
-            binaries: state.binaries ?? null,
-          });
-          return;
-        }
+      if (req.method === "GET" && url.pathname === "/health") {
+        send(200, {
+          ok: true,
+          daemon: state.daemon ?? null,
+          opencode: state.opencode ?? null,
+          activeId: state.activeId,
+          workspaceCount: state.workspaces.length,
+          cliVersion: state.cliVersion ?? null,
+          sidecar: state.sidecar ?? null,
+          binaries: state.binaries ?? null,
+        });
+        return;
+      }
 
       if (req.method === "GET" && url.pathname === "/workspaces") {
         send(200, { activeId: state.activeId, workspaces: state.workspaces });
@@ -4644,9 +4644,9 @@ async function runStart(args: ParsedArgs) {
     sandboxMode !== "none"
       ? SANDBOX_INTERNAL_OPENCODE_PORT
       : await resolvePort(
-          readNumber(args.flags, "opencode-port", undefined, "OPENWORK_OPENCODE_PORT"),
-          "127.0.0.1",
-        );
+        readNumber(args.flags, "opencode-port", undefined, "OPENWORK_OPENCODE_PORT"),
+        "127.0.0.1",
+      );
   const opencodeHotReload = readOpencodeHotReload(
     args.flags,
     {
@@ -4783,12 +4783,12 @@ async function runStart(args: ParsedArgs) {
   });
   const opencodeRouterBinary = opencodeRouterEnabled
     ? await resolveOpenCodeRouterBin({
-        explicit: explicitOpenCodeRouterBin,
-        manifest,
-        allowExternal,
-        sidecar,
-        source: sidecarSource,
-      })
+      explicit: explicitOpenCodeRouterBin,
+      manifest,
+      allowExternal,
+      sidecar,
+      source: sidecarSource,
+    })
     : null;
 
   if (sandboxMode !== "none") {
@@ -4821,11 +4821,11 @@ async function runStart(args: ParsedArgs) {
     sandboxMode !== "none"
       ? `OpenCode is proxied via ${opencodeConnectUrl} (requires OpenWork token)`
       : buildAttachCommand({
-          url: opencodeConnectUrl,
-          workspace: resolvedWorkspace,
-          username: opencodeUsername,
-          password: opencodePassword,
-        });
+        url: opencodeConnectUrl,
+        workspace: resolvedWorkspace,
+        username: opencodeUsername,
+        password: opencodePassword,
+      });
 
   const opencodeRouterHealthUrl = `http://127.0.0.1:${opencodeRouterHealthPort}`;
   const opencodeRouterEnv: NodeJS.ProcessEnv = {
@@ -4906,9 +4906,9 @@ async function runStart(args: ParsedArgs) {
       ...children.map((handle) => `- ${handle.name} (pid ${handle.child.pid ?? "unknown"})`),
       ...(sandboxContainerName && sandboxStopCommand
         ? [
-            `- sandbox (${sandboxStopCommand.split(" ")[0]} container ${sandboxContainerName})`,
-            `Stop: ${sandboxStopCommand} ${sandboxContainerName}`,
-          ]
+          `- sandbox (${sandboxStopCommand.split(" ")[0]} container ${sandboxContainerName})`,
+          `Stop: ${sandboxStopCommand} ${sandboxContainerName}`,
+        ]
         : []),
       `OpenWork URL: ${openworkConnectUrl}`,
       `OpenWork Token: ${openworkToken}`,
@@ -5449,11 +5449,11 @@ async function runStart(args: ParsedArgs) {
           } as BinaryDiagnostics,
           opencodeRouter: opencodeRouterBinary
             ? ({
-                path: opencodeRouterBinary.bin,
-                source: opencodeRouterBinary.source,
-                expectedVersion: opencodeRouterBinary.expectedVersion,
-                actualVersion: opencodeRouterActualVersion,
-              } as BinaryDiagnostics)
+              path: opencodeRouterBinary.bin,
+              source: opencodeRouterBinary.source,
+              expectedVersion: opencodeRouterBinary.expectedVersion,
+              actualVersion: opencodeRouterActualVersion,
+            } as BinaryDiagnostics)
             : null,
         },
       },

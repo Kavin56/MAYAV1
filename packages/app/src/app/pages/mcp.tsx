@@ -87,6 +87,44 @@ const statusBadgeStyle = (status: McpStatus) => {
   }
 };
 
+const isNodeJsMissingError = (error: string) => {
+  const lower = error.toLowerCase();
+  return (
+    lower.includes("npm") ||
+    lower.includes("node") ||
+    lower.includes("enoent") ||
+    lower.includes("not found") ||
+    lower.includes("command not found") ||
+    lower.includes("cannot find module")
+  );
+};
+
+const getHelpfulErrorMessage = (error: string, serviceName: string) => {
+  const lowerName = serviceName.toLowerCase();
+  
+  if (lowerName.includes("chrome") || lowerName.includes("devtools")) {
+    if (isNodeJsMissingError(error)) {
+      return {
+        title: "Node.js Required",
+        message: "Control Chrome requires Node.js to be installed on your computer.",
+        solution: "Download and install Node.js from nodejs.org (LTS version recommended)",
+        link: "https://nodejs.org",
+      };
+    }
+  }
+  
+  if (lowerName.includes("chrome") && isNodeJsMissingError(error)) {
+    return {
+      title: "Node.js Required",
+      message: "This app requires Node.js to run.",
+      solution: "Install Node.js from nodejs.org",
+      link: "https://nodejs.org",
+    };
+  }
+  
+  return null;
+};
+
 /* ── Icon mapping for known services ────────────────── */
 
 const serviceIcon = (name: string) => {
@@ -392,6 +430,27 @@ export default function McpView(props: McpViewProps) {
               );
             }}
           </For>
+          
+          {/* Add Custom MCP Card */}
+          <button
+            type="button"
+            onClick={() => setAddMcpModalOpen(true)}
+            class="group text-left rounded-xl border-2 border-dashed border-dls-border p-4 transition-all hover:border-blue-5 hover:bg-blue-2/30 hover:border-solid"
+          >
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border-2 border-dashed border-dls-border group-hover:border-blue-5 group-hover:bg-blue-2/50">
+                <Plus size={18} class="text-dls-secondary group-hover:text-blue-11" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <h4 class="text-sm font-semibold text-dls-text group-hover:text-blue-11">
+                  {tr("mcp.add_custom_mcp")}
+                </h4>
+                <p class="text-xs text-dls-secondary mt-0.5 line-clamp-2">
+                  {tr("mcp.add_modal_subtitle")}
+                </p>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -401,11 +460,17 @@ export default function McpView(props: McpViewProps) {
           <h3 class="text-[11px] font-bold text-dls-secondary uppercase tracking-widest">
             {tr("mcp.your_apps")}
           </h3>
-          <Show when={props.mcpLastUpdatedAt}>
-            <span class="text-[11px] text-dls-secondary tabular-nums">
-              {tr("mcp.last_synced")} {formatRelativeTime(props.mcpLastUpdatedAt ?? Date.now())}
-            </span>
-          </Show>
+          <div class="flex items-center gap-2">
+            <Button variant="secondary" class="!px-3 !py-1.5 !text-xs" onClick={() => setAddMcpModalOpen(true)}>
+              <Plus size={14} />
+              {tr("mcp.add_custom_mcp")}
+            </Button>
+            <Show when={props.mcpLastUpdatedAt}>
+              <span class="text-[11px] text-dls-secondary tabular-nums">
+                {tr("mcp.last_synced")} {formatRelativeTime(props.mcpLastUpdatedAt ?? Date.now())}
+              </span>
+            </Show>
+          </div>
         </div>
 
         <Show
@@ -488,11 +553,47 @@ export default function McpView(props: McpViewProps) {
 
                         {/* Error */}
                         <Show when={errorInfo()}>
-                          {(err) => (
-                            <div class="rounded-lg bg-red-2 border border-red-6 px-3 py-2 text-xs text-red-11">
-                              {err()}
-                            </div>
-                          )}
+                          {(err) => {
+                            const helpfulMsg = getHelpfulErrorMessage(err(), entry.name);
+                            return (
+                              <div>
+                                <Show when={helpfulMsg} fallback={
+                                  <div class="rounded-lg bg-red-2 border border-red-6 px-3 py-2 text-xs text-red-11">
+                                    {err()}
+                                  </div>
+                                }>
+                                  {(help) => (
+                                    <div class="rounded-lg bg-amber-2 border border-amber-6 px-3 py-3">
+                                      <div class="flex items-start gap-2">
+                                        <div class="w-5 h-5 rounded-full bg-amber-4 flex items-center justify-center shrink-0 mt-0.5">
+                                          <span class="text-amber-11 text-xs font-bold">!</span>
+                                        </div>
+                                        <div class="flex-1">
+                                          <div class="text-xs font-semibold text-amber-11">{help().title}</div>
+                                          <div class="text-xs text-dls-text mt-1">{help().message}</div>
+                                          <div class="mt-2 pt-2 border-t border-amber-6/50">
+                                            <div class="text-xs text-dls-text">
+                                              <span class="text-amber-11 font-medium">Fix: </span>
+                                              {help().solution}
+                                            </div>
+                                            <a
+                                              href={help().link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              class="inline-flex items-center gap-1 mt-2 text-xs text-blue-11 hover:underline"
+                                            >
+                                              Download Node.js
+                                              <ExternalLink size={10} />
+                                            </a>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </Show>
+                              </div>
+                            );
+                          }}
                         </Show>
 
                         {/* Technical details */}

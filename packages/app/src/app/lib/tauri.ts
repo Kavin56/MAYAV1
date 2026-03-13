@@ -621,6 +621,21 @@ export async function uninstallSkill(projectDir: string, name: string): Promise<
   return invoke<ExecResult>("uninstall_skill", { projectDir, name });
 }
 
+export type CloneGitSkillResult = {
+  ok: boolean;
+  message: string;
+  skillName?: string;
+  skillPath?: string;
+};
+
+export async function cloneGithubSkill(
+  url: string,
+  token: string | null,
+  projectDir: string,
+): Promise<CloneGitSkillResult> {
+  return invoke<CloneGitSkillResult>("clone_github_skill", { url, token, projectDir });
+}
+
 export type OpencodeConfigFile = {
   path: string;
   exists: boolean;

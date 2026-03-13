@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "workspace": {
+    "name": "MAYA",
+    "createdAt": 1772086527505,
+    "preset": "starter"
+  },
+  "authorizedRoots": [
+    "C:\\Users\\Surya\\Downloads\\MAYA"
+  ]
+}

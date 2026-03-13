@@ -1,0 +1,192 @@
+:version: '3.8'
+
+services:
+  # MAYA Orchestrator - Core Engine
+  maya-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.maya
+    container_name: maya-orchestrator
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Debug port
+    environment:
+      - NODE_ENV=production
+      - MAYA_SOUL_PATH=/opt/maya/soul
+      - MAYA_CONFIG_PATH=/opt/maya/config
+      - MAYA_LOG_LEVEL=info
+      - MAYA_HEARTBEAT_INTERVAL=21600  # 6 hours
+      - MAYA_SELF_EVOLUTION=true
+      - MAYA_SOCIAL_MEDIA_BRIDGE=true
+      - GMAIL_USER=surya.girishad@gmail.com
+      - GMAIL_PASS=Surya@2003
+      - RUNPOD_API_KEY=${RUNPOD_API_KEY}
+      - RUNPOD_ENDPOINT_ID=${RUNPOD_ENDPOINT_ID}
+    volumes:
+      - maya-soul:/opt/maya/soul
+      - maya-config:/opt/maya/config
+      - maya-logs:/opt/maya/logs
+      - maya-data:/opt/maya/data
+      - ./.opencode:/opt/maya/soul/.opencode:rw
+      - ./skills:/opt/maya/skills:rw
+    depends_on:
+      - redis
+      - chrome-headless
+    networks:
+      - maya-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Headless Chrome for Social Media Automation
+  chrome-headless:
+    image: browserless/chrome:latest
+    container_name: maya-chrome
+    restart: unless-stopped
+    ports:
+      - "9222:9222"
+    environment:
+      - MAX_CONCURRENT_SESSIONS=10
+      - MAX_QUEUE_LENGTH=50
+      - PREBOOT_CHROME=true
+      - ENABLE_DEBUGGER=true
+      - ENABLE_CORS=true
+      - TOKEN=${CHROME_TOKEN}
+      - EXIT_ON_HEALTH_FAILURE=true
+      - HEALTH_CHECK_PATH=/health
+      - HEALTH_CHECK_PORT=9222
+    volumes:
+      - chrome-data:/usr/src/app/workspace
+    networks:
+      - maya-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9222/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for Session Management & Caching
+  redis:
+    image: redis:7-alpine
+    container_name: maya-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - maya-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Caddy Reverse Proxy with SSL
+  caddy:
+    image: caddy:2-alpine
+    container_name: maya-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - maya-orchestrator
+    networks:
+      - maya-network
+
+  # Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: maya-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - maya-network
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: maya-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=maya2024
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - maya-network
+
+  # Heartbeat Service
+  maya-heartbeat:
+    image: maya-orchestrator:latest
+    container_name: maya-heartbeat
+    restart: unless-stopped
+    command: ["npm", "run", "heartbeat"]
+    environment:
+      - NODE_ENV=production
+      - MAYA_SOUL_PATH=/opt/maya/soul
+      - MAYA_HEARTBEAT_INTERVAL=21600
+    volumes:
+      - maya-soul:/opt/maya/soul:ro
+      - maya-config:/opt/maya/config:ro
+      - maya-logs:/opt/maya/logs
+    depends_on:
+      - maya-orchestrator
+      - redis
+    networks:
+      - maya-network
+
+volumes:
+  maya-soul:
+    driver: local
+  maya-config:
+    driver: local
+  maya-logs:
+    driver: local
+  maya-data:
+    driver: local
+  chrome-data:
+    driver: local
+  redis-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  maya-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

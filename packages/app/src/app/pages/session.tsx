@@ -29,6 +29,7 @@ import {
   ChevronRight,
   Circle,
   Cpu,
+  Gauge,
   HeartPulse,
   HardDrive,
   History,
@@ -47,6 +48,7 @@ import {
   Undo2,
   X,
   Zap,
+  BookOpen,
 } from "lucide-solid";
 
 import Button from "../components/button";
@@ -89,6 +91,7 @@ import InboxPanel from "../components/session/inbox-panel";
 import ArtifactMarkdownEditor from "../components/session/artifact-markdown-editor";
 
 export type SessionViewProps = {
+  view: View;
   selectedSessionId: string | null;
   setView: (view: View, sessionId?: string) => void;
   tab: DashboardTab;
@@ -147,6 +150,8 @@ export type SessionViewProps = {
   workspaceSessionGroups: WorkspaceSessionGroup[];
   openRenameWorkspace: (workspaceId: string) => void;
   selectSession: (sessionId: string) => Promise<void> | void;
+  themeMode: "light" | "dark" | "system";
+  setThemeMode: (value: "light" | "dark" | "system") => void;
   messages: MessageWithParts[];
   todos: TodoItem[];
   busyLabel: string | null;
@@ -210,6 +215,8 @@ export type SessionViewProps = {
   saveSession: (sessionId: string) => Promise<string>;
   sessionStatusById: Record<string, string>;
   deleteSession: (sessionId: string) => Promise<void>;
+  showBuildMode: boolean;
+  setShowBuildMode: (show: boolean) => void;
 };
 
 const BROWSER_SETUP_TEMPLATE = (() => {
@@ -250,6 +257,12 @@ const COMMAND_PALETTE_THINKING_OPTIONS = [
 ] as const;
 
 export default function SessionView(props: SessionViewProps) {
+  const logoSrc = () => {
+    if (props.themeMode === "dark") return "/maya-logo-dark.png";
+    if (props.themeMode === "light") return "/maya-logo.png";
+    return document.documentElement.dataset.theme === "dark" ? "/maya-logo-dark.png" : "/maya-logo.png";
+  };
+
   let messagesEndEl: HTMLDivElement | undefined;
   let bottomVisibilityEl: HTMLDivElement | undefined;
   let chatContainerEl: HTMLDivElement | undefined;
@@ -279,6 +292,7 @@ export default function SessionView(props: SessionViewProps) {
   const [agentPickerError, setAgentPickerError] = createSignal<string | null>(null);
   const [agentOptions, setAgentOptions] = createSignal<Agent[]>([]);
   const [nearBottom, setNearBottom] = createSignal(true);
+  const [showBuildMode, setShowBuildMode] = createSignal(false);
   const [searchOpen, setSearchOpen] = createSignal(false);
   const [searchQuery, setSearchQuery] = createSignal("");
   const [searchQueryDebounced, setSearchQueryDebounced] = createSignal("");
@@ -294,6 +308,15 @@ export default function SessionView(props: SessionViewProps) {
 
   const [markdownEditorOpen, setMarkdownEditorOpen] = createSignal(false);
   const [markdownEditorPath, setMarkdownEditorPath] = createSignal<string | null>(null);
+
+  createEffect(() => {
+    setShowBuildMode(props.showBuildMode);
+  });
+
+  const handleSetShowBuildMode = (show: boolean) => {
+    setShowBuildMode(show);
+    props.setShowBuildMode(show);
+  };
 
   // When a session is selected (i.e. we are in SessionView), the right sidebar is
   // navigation-only. Avoid showing any tab as "selected" to reduce confusion.
@@ -768,7 +791,7 @@ export default function SessionView(props: SessionViewProps) {
 
   const openMarkdownEditor = (file: string) => {
     if (!props.openworkServerClient) {
-      setToastMessage("Cannot open file: not connected to OpenWork server.");
+      setToastMessage("Cannot open file: not connected to MAYA server.");
       return;
     }
     if (!props.openworkServerWorkspaceId) {
@@ -886,7 +909,7 @@ export default function SessionView(props: SessionViewProps) {
     if (props.openworkServerStatus === "limited") {
       return "Add a server token to attach files.";
     }
-    return "Connect to OpenWork server to attach files.";
+    return "Connect to MAYA server to attach files.";
   });
 
   createEffect(() => {
@@ -2098,6 +2121,38 @@ export default function SessionView(props: SessionViewProps) {
   });
 
   const handleSendPrompt = (draft: ComposerDraft) => {
+    if (showBuildMode()) {
+      const buildModeInstruction = `You are in MAYA Build Mode. The user wants to add a new feature to their MAYA application. 
+
+Your task:
+1. Understand what they want to build
+2. Create the necessary files (skills, commands, MCP configs, etc.)
+3. The MAYA app is at: ${props.activeWorkspaceRoot || "the current workspace"}
+
+Available capabilities:
+- Create skills in .opencode/skills/ directory
+- Add MCP servers to opencode.json 
+- Create commands in .opencode/commands/
+- Modify configuration files
+- Install npm packages for plugins
+
+When done, summarize what you created and how to use it.
+
+User request: `;
+      
+      const modifiedDraft: ComposerDraft = {
+        ...draft,
+        text: buildModeInstruction + draft.text,
+        resolvedText: buildModeInstruction + draft.resolvedText,
+        parts: [{ type: "text", text: buildModeInstruction + (draft.parts[0]?.type === "text" ? draft.parts[0].text : draft.text) }],
+      };
+      setShowBuildMode(false);
+      props.setShowBuildMode(false);
+      startRun();
+      props.sendPromptAsync(modifiedDraft).catch(() => undefined);
+      return;
+    }
+    
     startRun();
     props.sendPromptAsync(draft).catch(() => undefined);
   };
@@ -2174,7 +2229,7 @@ export default function SessionView(props: SessionViewProps) {
     const workspaceId = props.openworkServerWorkspaceId?.trim() ?? "";
     if (!client || !workspaceId) {
       if (notify) {
-        setToastMessage("Connect to the OpenWork server to upload inbox files.");
+        setToastMessage("Connect to the MAYA server to upload inbox files.");
       }
       return [];
     }
@@ -2516,8 +2571,15 @@ export default function SessionView(props: SessionViewProps) {
   };
 
   return (
-    <div class="flex h-screen w-full bg-dls-surface text-dls-text font-sans overflow-hidden">
-      <aside class="w-64 hidden md:flex flex-col bg-dls-sidebar border-r border-dls-border p-4">
+    <div class="flex h-screen w-full text-dls-text overflow-hidden" style={{ background: "var(--bg-gradient)", "background-attachment": "fixed" }}>
+      <aside class="w-64 hidden md:flex flex-col border-r p-4" style={{ background: "var(--glass-bg)", "backdrop-filter": "blur(20px)", "-webkit-backdrop-filter": "blur(20px)", "border-right": "1px solid var(--glass-stroke-soft)" }}>
+        {/* Maya branding */}
+        <div class="flex items-center justify-between mb-5 px-1 pt-1">
+          <div class="flex items-center gap-2 cursor-pointer" onClick={() => props.setView("mission-control")}>
+            <img src={logoSrc()} alt="Maya" class="h-8 w-auto" />
+            <span class="text-sm font-semibold tracking-tight" style={{ color: "var(--dls-text-primary)" }}>MAYA</span>
+          </div>
+        </div>
         <div class="flex-1 overflow-y-auto">
           <Show when={showUpdatePill()}>
             <button
@@ -2559,69 +2621,68 @@ export default function SessionView(props: SessionViewProps) {
                 return (
                   <div class="space-y-1">
                     <div class="relative group">
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          class="w-full flex items-center justify-between h-10 px-3 rounded-lg text-left transition-colors text-dls-text hover:bg-dls-hover"
-                          onClick={() => {
-                            expandWorkspace(workspace().id);
-                            props.activateWorkspace(workspace().id);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key !== "Enter" && event.key !== " ") return;
-                            if (event.isComposing || event.keyCode === 229) return;
-                            event.preventDefault();
-                            expandWorkspace(workspace().id);
-                            props.activateWorkspace(workspace().id);
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        class="w-full flex items-center justify-between h-10 px-3 rounded-lg text-left transition-colors text-dls-text hover:bg-dls-hover"
+                        onClick={() => {
+                          expandWorkspace(workspace().id);
+                          props.activateWorkspace(workspace().id);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          if (event.isComposing || event.keyCode === 229) return;
+                          event.preventDefault();
+                          expandWorkspace(workspace().id);
+                          props.activateWorkspace(workspace().id);
+                        }}
+                      >
+                        <button
+                          type="button"
+                          class="mr-2 -ml-1 p-1 rounded-md text-dls-secondary hover:text-dls-text hover:bg-dls-active"
+                          aria-label={isWorkspaceExpanded(workspace().id) ? "Collapse" : "Expand"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleWorkspaceExpanded(workspace().id);
                           }}
                         >
-                          <button
-                            type="button"
-                            class="mr-2 -ml-1 p-1 rounded-md text-dls-secondary hover:text-dls-text hover:bg-dls-active"
-                            aria-label={isWorkspaceExpanded(workspace().id) ? "Collapse" : "Expand"}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleWorkspaceExpanded(workspace().id);
-                            }}
+                          <Show
+                            when={isWorkspaceExpanded(workspace().id)}
+                            fallback={<ChevronRight size={14} />}
                           >
-                            <Show
-                              when={isWorkspaceExpanded(workspace().id)}
-                              fallback={<ChevronRight size={14} />}
-                            >
-                              <ChevronDown size={14} />
+                            <ChevronDown size={14} />
+                          </Show>
+                        </button>
+                        <div class="min-w-0 flex-1">
+                          <div class="text-sm font-medium truncate">{workspaceLabel(workspace())}</div>
+                          <div class="text-[11px] text-dls-secondary flex items-center gap-1.5">
+                            <span>{workspaceKindLabel(workspace())}</span>
+                            <Show when={soulEnabled()}>
+                              <span class="inline-flex items-center gap-1 rounded-full border border-rose-7/40 bg-rose-3/40 px-1.5 py-0.5 text-[10px] text-rose-11">
+                                <HeartPulse size={10} />
+                                Soul
+                              </span>
                             </Show>
-                          </button>
-                          <div class="min-w-0 flex-1">
-                            <div class="text-sm font-medium truncate">{workspaceLabel(workspace())}</div>
-                            <div class="text-[11px] text-dls-secondary flex items-center gap-1.5">
-                              <span>{workspaceKindLabel(workspace())}</span>
-                              <Show when={soulEnabled()}>
-                                <span class="inline-flex items-center gap-1 rounded-full border border-rose-7/40 bg-rose-3/40 px-1.5 py-0.5 text-[10px] text-rose-11">
-                                  <HeartPulse size={10} />
-                                  Soul
-                                </span>
-                              </Show>
-                            </div>
                           </div>
-                          <Show when={group.status === "loading"}>
-                            <Loader2 size={14} class="animate-spin text-dls-secondary mr-1" />
-                          </Show>
-                          <Show when={group.status === "error"}>
-                            <span
-                              class={`text-[10px] px-2 py-0.5 rounded-full border ${
-                                taskLoadError().tone === "offline"
-                                  ? "border-amber-7/50 text-amber-11 bg-amber-3/30"
-                                  : "border-red-7/50 text-red-11 bg-red-3/30"
-                              }`}
-                              title={taskLoadError().title}
-                            >
-                              {taskLoadError().label}
-                            </span>
-                          </Show>
-                          <Show when={isConnecting()}>
-                            <Loader2 size={14} class="animate-spin text-dls-secondary" />
-                          </Show>
                         </div>
+                        <Show when={group.status === "loading"}>
+                          <Loader2 size={14} class="animate-spin text-dls-secondary mr-1" />
+                        </Show>
+                        <Show when={group.status === "error"}>
+                          <span
+                            class={`text-[10px] px-2 py-0.5 rounded-full border ${taskLoadError().tone === "offline"
+                              ? "border-amber-7/50 text-amber-11 bg-amber-3/30"
+                              : "border-red-7/50 text-red-11 bg-red-3/30"
+                              }`}
+                            title={taskLoadError().title}
+                          >
+                            {taskLoadError().label}
+                          </span>
+                        </Show>
+                        <Show when={isConnecting()}>
+                          <Loader2 size={14} class="animate-spin text-dls-secondary" />
+                        </Show>
+                      </div>
                       <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           type="button"
@@ -2735,11 +2796,10 @@ export default function SessionView(props: SessionViewProps) {
                                   <div
                                     role="button"
                                     tabIndex={0}
-                                    class={`group flex items-center justify-between h-8 px-3 rounded-lg cursor-pointer relative overflow-hidden ml-2 w-[calc(100%-0.5rem)] ${
-                                      isSelected()
-                                        ? "bg-dls-active text-dls-text"
-                                        : "hover:bg-dls-hover"
-                                    }`}
+                                    class={`group flex items-center justify-between h-8 px-3 rounded-lg cursor-pointer relative overflow-hidden ml-2 w-[calc(100%-0.5rem)] ${isSelected()
+                                      ? "bg-dls-active text-dls-text"
+                                      : "hover:bg-dls-hover"
+                                      }`}
                                     onClick={() => openSessionFromList(workspace().id, session.id)}
                                     onKeyDown={(event) => {
                                       if (event.key !== "Enter" && event.key !== " ") return;
@@ -2771,11 +2831,10 @@ export default function SessionView(props: SessionViewProps) {
                               fallback={
                                 <Show when={group.status === "error"}>
                                   <div
-                                    class={`w-full px-3 py-2 text-xs ml-2 text-left rounded-lg border ${
-                                      taskLoadError().tone === "offline"
-                                        ? "text-amber-11 bg-amber-3/20 border-amber-7/40"
-                                        : "text-red-11 bg-red-3/20 border-red-7/40"
-                                    }`}
+                                    class={`w-full px-3 py-2 text-xs ml-2 text-left rounded-lg border ${taskLoadError().tone === "offline"
+                                      ? "text-amber-11 bg-amber-3/20 border-amber-7/40"
+                                      : "text-red-11 bg-red-3/20 border-red-7/40"
+                                      }`}
                                     title={taskLoadError().title}
                                   >
                                     {taskLoadError().message}
@@ -2790,11 +2849,10 @@ export default function SessionView(props: SessionViewProps) {
                                     <div
                                       role="button"
                                       tabIndex={0}
-                                      class={`group flex items-center justify-between h-8 px-3 rounded-lg cursor-pointer relative overflow-hidden ml-2 w-[calc(100%-0.5rem)] ${
-                                        isSelected()
-                                          ? "bg-dls-active text-dls-text"
-                                          : "hover:bg-dls-hover"
-                                      }`}
+                                      class={`group flex items-center justify-between h-8 px-3 rounded-lg cursor-pointer relative overflow-hidden ml-2 w-[calc(100%-0.5rem)] ${isSelected()
+                                        ? "bg-dls-active text-dls-text"
+                                        : "hover:bg-dls-hover"
+                                        }`}
                                       onClick={() => openSessionFromList(workspace().id, session.id)}
                                       onKeyDown={(event) => {
                                         if (event.key !== "Enter" && event.key !== " ") return;
@@ -2904,8 +2962,8 @@ export default function SessionView(props: SessionViewProps) {
 
       </aside>
 
-      <main class="flex-1 flex flex-col overflow-hidden bg-dls-surface">
-        <header class="h-14 border-b border-dls-border flex items-center justify-between px-6 bg-dls-surface z-10 shrink-0">
+      <main class="flex-1 flex flex-col overflow-hidden" style={{ background: "transparent" }}>
+        <header class="h-14 flex items-center justify-between px-6 glass-header z-10 shrink-0">
           <div class="flex items-center gap-3 min-w-0">
             <Show when={showUpdatePill()}>
               <button
@@ -2947,11 +3005,10 @@ export default function SessionView(props: SessionViewProps) {
           <div class="flex items-center gap-2">
             <button
               type="button"
-              class={`h-9 px-2.5 flex items-center justify-center rounded-lg text-[11px] font-mono transition-colors ${
-                commandPaletteOpen()
-                  ? "bg-dls-active text-dls-text"
-                  : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
-              }`}
+              class={`h-9 px-2.5 flex items-center justify-center rounded-lg text-[11px] font-mono transition-colors ${commandPaletteOpen()
+                ? "bg-dls-active text-dls-text"
+                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+                }`}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -2968,11 +3025,10 @@ export default function SessionView(props: SessionViewProps) {
             </button>
             <button
               type="button"
-              class={`h-9 w-9 flex items-center justify-center rounded-lg transition-colors ${
-                searchOpen()
-                  ? "bg-dls-active text-dls-text"
-                  : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
-              }`}
+              class={`h-9 w-9 flex items-center justify-center rounded-lg transition-colors ${searchOpen()
+                ? "bg-dls-active text-dls-text"
+                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+                }`}
               onClick={() => {
                 if (searchOpen()) {
                   closeSearch();
@@ -3075,7 +3131,7 @@ export default function SessionView(props: SessionViewProps) {
 
         <Show when={searchOpen()}>
           <div class="border-b border-dls-border bg-dls-hover/40 px-6 py-2">
-            <div class="mx-auto flex w-full max-w-5xl items-center gap-2 rounded-xl border border-dls-border bg-dls-surface px-3 py-2">
+            <div class="mx-auto flex w-full max-w-5xl items-center gap-2 rounded-xl border border-dls-border px-3 py-2" style={{ background: "var(--glass-bg)", "backdrop-filter": "blur(8px)", "-webkit-backdrop-filter": "blur(8px)" }}>
               <Search size={14} class="text-dls-secondary" />
               <input
                 ref={(el) => (searchInputEl = el)}
@@ -3131,114 +3187,119 @@ export default function SessionView(props: SessionViewProps) {
           </div>
         </Show>
 
-       <div class="flex-1 flex overflow-hidden">
-         <div class="flex-1 min-w-0 relative overflow-hidden">
-           <div
-             class="h-full overflow-y-auto px-12 py-10 scroll-smooth bg-dls-surface"
-             style={{ contain: "layout paint style" }}
-             ref={(el) => (chatContainerEl = el)}
-           >
-             <div class="max-w-5xl mx-auto w-full">
-           <Show when={props.messages.length === 0}>
-             <div class="text-center py-16 px-6 space-y-6">
-               <div class="w-16 h-16 bg-dls-hover rounded-3xl mx-auto flex items-center justify-center border border-dls-border">
-                 <Zap class="text-dls-secondary" />
-               </div>
-              <div class="space-y-2">
-                <h3 class="text-xl font-medium">What do you want to do?</h3>
-                <p class="text-dls-secondary text-sm max-w-sm mx-auto">
-                  Pick a starting point or just type below.
-                </p>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-2 max-w-2xl mx-auto text-left">
-                <button
-                  type="button"
-                  class="rounded-2xl border border-dls-border bg-dls-hover p-4 transition-all hover:bg-dls-active hover:border-gray-7"
-                  onClick={() => {
-                    void handleBrowserAutomationQuickstart();
-                  }}
-                >
-                  <div class="text-sm font-semibold text-dls-text">Automate your browser</div>
-                  <div class="mt-1 text-xs text-dls-secondary leading-relaxed">
-                    Set up browser actions and run reliable web tasks from OpenWork.
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  class="rounded-2xl border border-dls-border bg-dls-hover p-4 transition-all hover:bg-dls-active hover:border-gray-7"
-                  onClick={() => {
-                    void handleSoulQuickstart();
-                  }}
-                >
-                  <div class="text-sm font-semibold text-dls-text">Give me a soul</div>
-                  <div class="mt-1 text-xs text-dls-secondary leading-relaxed">
-                    Keep your goals and preferences across sessions with light scheduled check-ins.
-                    Tradeoff: more autonomy can create extra background runs, but revert is one command.
-                    Audit setup and heartbeat evidence from the Soul section.
-                  </div>
-                </button>
-              </div>
-            </div>
-          </Show>
-
-          <Show when={hiddenMessageCount() > 0}>
-            <div class="mb-4 flex justify-center">
-              <button
-                type="button"
-                class="rounded-full border border-dls-border bg-dls-hover/70 px-3 py-1 text-xs text-dls-secondary transition-colors hover:bg-dls-active hover:text-dls-text"
-                onClick={revealEarlierMessages}
-              >
-                Show {nextRevealCount().toLocaleString()} earlier message
-                {nextRevealCount() === 1 ? "" : "s"}
-              </button>
-            </div>
-          </Show>
-
-          <MessageList
-            messages={batchedRenderedMessages()}
-            isStreaming={showRunIndicator()}
-            developerMode={props.developerMode}
-            showThinking={props.showThinking}
-            workspaceRoot={props.activeWorkspaceRoot}
-            expandedStepIds={props.expandedStepIds}
-            setExpandedStepIds={props.setExpandedStepIds}
-            openSessionById={(sessionId) => props.setView("session", sessionId)}
-            searchMatchMessageIds={searchMatchMessageIds()}
-            activeSearchMessageId={activeSearchHit()?.messageId ?? null}
-            searchHighlightQuery={searchQueryDebounced().trim()}
-            footer={
-              showRunIndicator() ? (
-                <div class="flex justify-start pl-2">
-                  <div class="w-full max-w-[68ch]">
-                    <div
-                      class={`flex items-center gap-2 text-xs py-1 ${runPhase() === "error" ? "text-red-11" : "text-gray-9"}`}
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <span
-                        class={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                          runPhase() === "error" ? "bg-red-9" : "bg-gray-8 animate-pulse"
-                        }`}
-                      />
-                      <span class="truncate">{thinkingStatus() || runLabel()}</span>
-                      <Show when={props.developerMode}>
-                        <span class="text-[10px] text-gray-8 ml-auto shrink-0">{runElapsedLabel()}</span>
-                      </Show>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 min-w-0 relative overflow-hidden">
+            <div
+              class="h-full overflow-y-auto px-12 py-10 scroll-smooth"
+              style={{ contain: "layout paint style" }}
+              ref={(el) => (chatContainerEl = el)}
+            >
+              <div class="max-w-5xl mx-auto w-full">
+                <Show when={props.messages.length === 0}>
+                  <div class="text-center py-16 px-6 space-y-6">
+                    <div class="w-16 h-16 bg-dls-hover rounded-3xl mx-auto flex items-center justify-center border border-dls-border">
+                      <Zap class="text-dls-secondary" />
+                    </div>
+                    <div class="space-y-2">
+                      <h3 class="text-xl font-medium">What do you want to do?</h3>
+                      <p class="text-dls-secondary text-sm max-w-sm mx-auto">
+                        Pick a starting point or just type below.
+                      </p>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2 max-w-2xl mx-auto text-left">
+                      <button
+                        type="button"
+                        class="rounded-2xl border border-dls-border bg-dls-hover p-4 transition-all hover:bg-dls-active hover:border-gray-7"
+                        onClick={() => {
+                          void handleBrowserAutomationQuickstart();
+                        }}
+                      >
+                        <div class="text-sm font-semibold text-dls-text">Automate your browser</div>
+                        <div class="mt-1 text-xs text-dls-secondary leading-relaxed">
+                          Set up browser actions and run reliable web tasks from OpenWork.
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-2xl border border-dls-border bg-dls-hover p-4 transition-all hover:bg-dls-active hover:border-gray-7"
+                        onClick={() => {
+                          void handleSoulQuickstart();
+                        }}
+                      >
+                        <div class="text-sm font-semibold text-dls-text">Give me a soul</div>
+                        <div class="mt-1 text-xs text-dls-secondary leading-relaxed">
+                          Keep your goals and preferences across sessions with light scheduled check-ins.
+                          Tradeoff: more autonomy can create extra background runs, but revert is one command.
+                          Audit setup and heartbeat evidence from the Soul section.
+                        </div>
+                      </button>
                     </div>
                   </div>
-                </div>
-              ) : undefined
-            }
-          />
+                </Show>
 
-           <div
-             ref={(el) => {
-               messagesEndEl = el;
-               bottomVisibilityEl = el;
-             }}
-           />
-           </div>
-           </div>
+                <Show when={hiddenMessageCount() > 0}>
+                  <div class="mb-4 flex justify-center">
+                    <button
+                      type="button"
+                      class="rounded-full border border-dls-border bg-dls-hover/70 px-3 py-1 text-xs text-dls-secondary transition-colors hover:bg-dls-active hover:text-dls-text"
+                      onClick={revealEarlierMessages}
+                    >
+                      Show {nextRevealCount().toLocaleString()} earlier message
+                      {nextRevealCount() === 1 ? "" : "s"}
+                    </button>
+                  </div>
+                </Show>
+
+                <MessageList
+                  messages={batchedRenderedMessages()}
+                  isStreaming={showRunIndicator()}
+                  developerMode={props.developerMode}
+                  showThinking={props.showThinking}
+                  workspaceRoot={props.activeWorkspaceRoot}
+                  expandedStepIds={props.expandedStepIds}
+                  setExpandedStepIds={props.setExpandedStepIds}
+                  openSessionById={(sessionId) => props.setView("session", sessionId)}
+                  searchMatchMessageIds={searchMatchMessageIds()}
+                  activeSearchMessageId={activeSearchHit()?.messageId ?? null}
+                  searchHighlightQuery={searchQueryDebounced().trim()}
+                  footer={
+                    showRunIndicator() ? (
+                      <div class="flex justify-start pl-2">
+                        <div class="w-full max-w-[68ch]">
+                          <div
+                            class={`flex items-center gap-2 text-xs py-1 ${runPhase() === "error" ? "text-red-11" : "text-gray-9"}`}
+                            role="status"
+                            aria-live="polite"
+                          >
+                            <span
+                              class={`h-1.5 w-1.5 rounded-full shrink-0 ${runPhase() === "error" ? "bg-red-9" : "bg-gray-8 animate-pulse"
+                                }`}
+                            />
+                            <span class="truncate">
+                              {thinkingStatus() || runLabel()}
+                              <Show when={runPhase() === "error" && props.error}>
+                                {" — "}
+                                <span class="text-red-11/90">{props.error}</span>
+                              </Show>
+                            </span>
+                            <Show when={props.developerMode}>
+                              <span class="text-[10px] text-gray-8 ml-auto shrink-0">{runElapsedLabel()}</span>
+                            </Show>
+                          </div>
+                        </div>
+                      </div>
+                    ) : undefined
+                  }
+                />
+
+                <div
+                  ref={(el) => {
+                    messagesEndEl = el;
+                    bottomVisibilityEl = el;
+                  }}
+                />
+              </div>
+            </div>
 
             <Show when={props.messages.length > 0 && !nearBottom()}>
               <div class="absolute bottom-4 left-0 right-0 z-20 flex justify-center pointer-events-none">
@@ -3253,10 +3314,10 @@ export default function SessionView(props: SessionViewProps) {
                 </div>
               </div>
             </Show>
-         </div>
+          </div>
 
           <Show when={markdownEditorOpen()}>
-            <aside class="hidden lg:flex w-[520px] shrink-0 border-l border-dls-border bg-dls-sidebar">
+            <aside class="hidden lg:flex w-[520px] shrink-0 border-l" style={{ background: "var(--glass-bg)", "backdrop-filter": "blur(20px)", "-webkit-backdrop-filter": "blur(20px)", "border-left": "1px solid var(--glass-stroke-soft)" }}>
               <ArtifactMarkdownEditor
                 open={markdownEditorOpen()}
                 path={markdownEditorPath()}
@@ -3269,111 +3330,111 @@ export default function SessionView(props: SessionViewProps) {
           </Show>
         </div>
 
-      <Show when={todoCount() > 0}>
-        <div class="mx-auto w-full max-w-[68ch] px-4">
-          <div class="rounded-t-xl border border-b-0 border-gray-6/70 bg-gray-1/70 shadow-sm shadow-gray-12/5">
-            <button
-              type="button"
-              class="w-full flex items-center justify-between px-4 py-2.5 text-xs text-gray-9 hover:bg-gray-2/50 transition-colors rounded-t-xl"
-              onClick={() => setTodoExpanded((prev) => !prev)}
-            >
-              <div class="flex items-center gap-2">
-                <ListTodo size={14} class="text-gray-8" />
-                <span class="text-gray-11 font-medium">{todoLabel()}</span>
-              </div>
-              <Minimize2
-                size={12}
-                class={`text-gray-8 transition-transform ${todoExpanded() ? "" : "rotate-180"}`}
-              />
-            </button>
-            <Show when={todoExpanded()}>
-              <div class="px-4 pb-3 space-y-2.5 max-h-60 overflow-auto border-t border-gray-6/50">
-                <For each={todoList()}>
-                  {(todo, index) => {
-                    const done = () => todo.status === "completed";
-                    const cancelled = () => todo.status === "cancelled";
-                    const active = () => todo.status === "in_progress";
-                    return (
-                      <div class="flex items-start gap-2.5 pt-2.5 first:pt-2.5">
-                        <div class="flex items-center gap-1.5 pt-0.5">
-                          <div
-                            class={`h-4.5 w-4.5 rounded-full border flex items-center justify-center ${
-                              done()
+        <Show when={todoCount() > 0}>
+          <div class="mx-auto w-full max-w-[68ch] px-4">
+            <div class="rounded-t-xl border border-b-0 border-gray-6/70 bg-gray-1/70 shadow-sm shadow-gray-12/5">
+              <button
+                type="button"
+                class="w-full flex items-center justify-between px-4 py-2.5 text-xs text-gray-9 hover:bg-gray-2/50 transition-colors rounded-t-xl"
+                onClick={() => setTodoExpanded((prev) => !prev)}
+              >
+                <div class="flex items-center gap-2">
+                  <ListTodo size={14} class="text-gray-8" />
+                  <span class="text-gray-11 font-medium">{todoLabel()}</span>
+                </div>
+                <Minimize2
+                  size={12}
+                  class={`text-gray-8 transition-transform ${todoExpanded() ? "" : "rotate-180"}`}
+                />
+              </button>
+              <Show when={todoExpanded()}>
+                <div class="px-4 pb-3 space-y-2.5 max-h-60 overflow-auto border-t border-gray-6/50">
+                  <For each={todoList()}>
+                    {(todo, index) => {
+                      const done = () => todo.status === "completed";
+                      const cancelled = () => todo.status === "cancelled";
+                      const active = () => todo.status === "in_progress";
+                      return (
+                        <div class="flex items-start gap-2.5 pt-2.5 first:pt-2.5">
+                          <div class="flex items-center gap-1.5 pt-0.5">
+                            <div
+                              class={`h-4.5 w-4.5 rounded-full border flex items-center justify-center ${done()
                                 ? "border-green-6 bg-green-2 text-green-11"
                                 : active()
                                   ? "border-amber-6 bg-amber-2 text-amber-11"
                                   : cancelled()
                                     ? "border-gray-6 bg-gray-2 text-gray-8"
                                     : "border-gray-6 bg-gray-1 text-gray-8"
-                            }`}
+                                }`}
+                            >
+                              <Show when={done()}>
+                                <Check size={10} />
+                              </Show>
+                              <Show when={!done() && active()}>
+                                <span class="h-1.5 w-1.5 rounded-full bg-amber-9" />
+                              </Show>
+                            </div>
+                          </div>
+                          <div
+                            class={`flex-1 text-sm leading-relaxed ${cancelled() ? "text-gray-9 line-through" : "text-gray-12"
+                              }`}
                           >
-                            <Show when={done()}>
-                              <Check size={10} />
-                            </Show>
-                            <Show when={!done() && active()}>
-                              <span class="h-1.5 w-1.5 rounded-full bg-amber-9" />
-                            </Show>
+                            <span class="text-gray-9 mr-1.5">{index() + 1}.</span>
+                            {todo.content}
                           </div>
                         </div>
-                        <div
-                          class={`flex-1 text-sm leading-relaxed ${
-                            cancelled() ? "text-gray-9 line-through" : "text-gray-12"
-                          }`}
-                        >
-                          <span class="text-gray-9 mr-1.5">{index() + 1}.</span>
-                          {todo.content}
-                        </div>
-                      </div>
-                    );
-                  }}
-                </For>
-              </div>
-            </Show>
+                      );
+                    }}
+                  </For>
+                </div>
+              </Show>
+            </div>
           </div>
-        </div>
-      </Show>
+        </Show>
 
-      <Composer
-        prompt={props.prompt}
-        developerMode={props.developerMode}
-        busy={props.busy}
-        isStreaming={showRunIndicator()}
-        onSend={handleSendPrompt}
-        onStop={cancelRun}
-        onDraftChange={handleDraftChange}
-        selectedModelLabel={props.selectedSessionModelLabel || "Model"}
-        onModelClick={props.openSessionModelPicker}
-        modelVariantLabel={props.modelVariantLabel}
-        modelVariant={props.modelVariant}
-        onModelVariantChange={props.setModelVariant}
-        agentLabel={agentLabel()}
-        selectedAgent={props.selectedSessionAgent}
-        agentPickerOpen={agentPickerOpen()}
-        agentPickerBusy={agentPickerBusy()}
-        agentPickerError={agentPickerError()}
-        agentOptions={agentOptions()}
-        onToggleAgentPicker={openAgentPicker}
-        onSelectAgent={(agent) => {
-          applySessionAgent(agent);
-          setAgentPickerOpen(false);
-        }}
-        setAgentPickerRef={(el) => {
-          agentPickerRef = el;
-        }}
-        showNotionBanner={props.showTryNotionPrompt}
-        onNotionBannerClick={props.onTryNotionPrompt}
-        toast={toastMessage()}
-        onToast={(message) => setToastMessage(message)}
-        listAgents={props.listAgents}
-        recentFiles={props.workingFiles}
-        searchFiles={props.searchFiles}
-        listCommands={props.listCommands}
-        isRemoteWorkspace={props.activeWorkspaceDisplay.workspaceType === "remote"}
-        isSandboxWorkspace={isSandboxWorkspace()}
-        onUploadInboxFiles={uploadInboxFiles}
-        attachmentsEnabled={attachmentsEnabled()}
-        attachmentsDisabledReason={attachmentsDisabledReason()}
-      />
+        <Composer
+          prompt={props.prompt}
+          developerMode={props.developerMode}
+          busy={props.busy}
+          isStreaming={showRunIndicator()}
+          onSend={handleSendPrompt}
+          onStop={cancelRun}
+          onDraftChange={handleDraftChange}
+          selectedModelLabel={props.selectedSessionModelLabel || "Model"}
+          onModelClick={props.openSessionModelPicker}
+          modelVariantLabel={props.modelVariantLabel}
+          modelVariant={props.modelVariant}
+          onModelVariantChange={props.setModelVariant}
+          agentLabel={agentLabel()}
+          selectedAgent={props.selectedSessionAgent}
+          agentPickerOpen={agentPickerOpen()}
+          agentPickerBusy={agentPickerBusy()}
+          agentPickerError={agentPickerError()}
+          agentOptions={agentOptions()}
+          onToggleAgentPicker={openAgentPicker}
+          onSelectAgent={(agent) => {
+            applySessionAgent(agent);
+            setAgentPickerOpen(false);
+          }}
+          setAgentPickerRef={(el) => {
+            agentPickerRef = el;
+          }}
+          showNotionBanner={props.showTryNotionPrompt}
+          onNotionBannerClick={props.onTryNotionPrompt}
+          toast={toastMessage()}
+          onToast={(message) => setToastMessage(message)}
+          listAgents={props.listAgents}
+          recentFiles={props.workingFiles}
+          searchFiles={props.searchFiles}
+          listCommands={props.listCommands}
+          isRemoteWorkspace={props.activeWorkspaceDisplay.workspaceType === "remote"}
+          isSandboxWorkspace={isSandboxWorkspace()}
+          onUploadInboxFiles={uploadInboxFiles}
+          attachmentsEnabled={attachmentsEnabled()}
+          attachmentsDisabledReason={attachmentsDisabledReason()}
+          showBuildMode={showBuildMode()}
+          setShowBuildMode={handleSetShowBuildMode}
+        />
 
         <StatusBar
           clientConnected={props.clientConnected}
@@ -3388,95 +3449,116 @@ export default function SessionView(props: SessionViewProps) {
         />
       </main>
 
-      <aside class="w-56 hidden md:flex flex-col bg-dls-sidebar border-l border-dls-border p-4">
+      <aside class="w-56 hidden md:flex flex-col p-4 border-l" style={{ background: "var(--glass-bg)", "backdrop-filter": "blur(20px)", "-webkit-backdrop-filter": "blur(20px)", "border-left": "1px solid var(--glass-stroke-soft)" }}>
         <div class="flex-1 overflow-y-auto space-y-3 pt-2">
           <div class="space-y-1">
-          <button
-            type="button"
-            class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${
-              showRightSidebarSelection() && props.tab === "scheduled"
-                ? "bg-dls-active text-dls-text"
-                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
-            }`}
-            onClick={() => {
-              props.setTab("scheduled");
-              props.setView("dashboard");
-            }}
-          >
-            <History size={18} />
-            Automations
-          </button>
-          <button
-            type="button"
-            class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${
-              showRightSidebarSelection() && props.tab === "soul"
-                ? "bg-dls-active text-dls-text"
-                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
-            }`}
-            onClick={() => openSoul()}
-          >
-            <HeartPulse size={18} class={soulNavIconClass()} />
-            Soul
-          </button>
-          <button
-            type="button"
-            class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${
-              showRightSidebarSelection() && props.tab === "skills"
-                ? "bg-dls-active text-dls-text"
-                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
-            }`}
-            onClick={() => {
-              props.setTab("skills");
-              props.setView("dashboard");
-            }}
-          >
-            <Zap size={18} />
-            Skills
-          </button>
-          <button
-            type="button"
-            class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${
-              showRightSidebarSelection() && (props.tab === "mcp" || props.tab === "plugins")
-                ? "bg-dls-active text-dls-text"
-                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
-            }`}
-            onClick={() => {
-              props.setTab("mcp");
-              props.setView("dashboard");
-            }}
-          >
-            <Box size={18} />
-            Extensions
-          </button>
-          <button
-            type="button"
-            class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${
-              showRightSidebarSelection() && props.tab === "identities"
-                ? "bg-dls-active text-dls-text"
-                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
-            }`}
-            onClick={() => {
-              props.setTab("identities");
-              props.setView("dashboard");
-            }}
-          >
-            <MessageCircle size={18} />
-            Messaging
-          </button>
-          <Show when={props.developerMode}>
             <button
               type="button"
-              class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${
-                showRightSidebarSelection() && props.tab === "config"
+              class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${showRightSidebarSelection() && props.tab === "scheduled" && props.view === "dashboard"
+                ? "bg-dls-active text-dls-text"
+                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+                }`}
+              onClick={() => {
+                props.setTab("scheduled");
+                props.setView("dashboard");
+              }}
+            >
+              <History size={18} />
+              Automations
+            </button>
+            <button
+              type="button"
+              class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${props.view === "mission-control"
+                ? "bg-dls-active text-dls-text"
+                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+                }`}
+              onClick={() => {
+                props.setView("mission-control");
+              }}
+            >
+              <Gauge size={18} class={props.view === "mission-control" ? "text-dls-accent" : "text-dls-secondary"} />
+              Mission Control
+            </button>
+            <button
+              type="button"
+              class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${showRightSidebarSelection() && props.tab === "docs" && props.view === "dashboard"
+                ? "bg-dls-active text-dls-text"
+                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+                }`}
+              onClick={() => {
+                props.setTab("docs");
+                props.setView("dashboard");
+              }}
+            >
+              <BookOpen size={18} />
+              Docs
+            </button>
+            <button
+              type="button"
+              class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${showRightSidebarSelection() && props.tab === "soul" && props.view === "dashboard"
+                ? "bg-dls-active text-dls-text"
+                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+                }`}
+              onClick={() => openSoul()}
+            >
+              <HeartPulse size={18} class={soulNavIconClass()} />
+              Soul
+            </button>
+            <button
+              type="button"
+              class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${showRightSidebarSelection() && props.tab === "skills" && props.view === "dashboard"
+                ? "bg-dls-active text-dls-text"
+                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+                }`}
+              onClick={() => {
+                props.setTab("skills");
+                props.setView("dashboard");
+              }}
+            >
+              <Zap size={18} />
+              Skills
+            </button>
+            <button
+              type="button"
+              class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${showRightSidebarSelection() && (props.tab === "mcp" || props.tab === "plugins") && props.view === "dashboard"
+                ? "bg-dls-active text-dls-text"
+                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+                }`}
+              onClick={() => {
+                props.setTab("mcp");
+                props.setView("dashboard");
+              }}
+            >
+              <Box size={18} />
+              Extensions
+            </button>
+            <button
+              type="button"
+              class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${showRightSidebarSelection() && props.tab === "identities" && props.view === "dashboard"
+                ? "bg-dls-active text-dls-text"
+                : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+                }`}
+              onClick={() => {
+                props.setTab("identities");
+                props.setView("dashboard");
+              }}
+            >
+              <MessageCircle size={18} />
+              Messaging
+            </button>
+            <Show when={props.developerMode}>
+              <button
+                type="button"
+                class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${showRightSidebarSelection() && props.tab === "config" && props.view === "dashboard"
                   ? "bg-dls-active text-dls-text"
                   : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
-              }`}
-              onClick={openConfig}
-            >
-              <SlidersHorizontal size={18} />
-              Advanced
-            </button>
-          </Show>
+                  }`}
+                onClick={openConfig}
+              >
+                <SlidersHorizontal size={18} />
+                Advanced
+              </button>
+            </Show>
           </div>
 
           <InboxPanel
@@ -3555,11 +3637,10 @@ export default function SessionView(props: SessionViewProps) {
                           commandPaletteOptionRefs[idx()] = el;
                         }}
                         type="button"
-                        class={`w-full text-left rounded-xl px-3 py-2.5 transition-colors ${
-                          idx() === commandPaletteActiveIndex()
-                            ? "bg-dls-active text-dls-text"
-                            : "text-dls-text hover:bg-dls-hover"
-                        }`}
+                        class={`w-full text-left rounded-xl px-3 py-2.5 transition-colors ${idx() === commandPaletteActiveIndex()
+                          ? "bg-dls-active text-dls-text"
+                          : "text-dls-text hover:bg-dls-hover"
+                          }`}
                         onMouseEnter={() => setCommandPaletteActiveIndex(idx())}
                         onClick={item.action}
                       >

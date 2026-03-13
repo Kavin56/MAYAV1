@@ -46,14 +46,17 @@ import ConfigView from "./config";
 import SettingsView from "./settings";
 import SkillsView from "./skills";
 import IdentitiesView from "./identities";
+import DocsView from "./docs";
 import StatusBar from "../components/status-bar";
 import ProviderAuthModal, { type ProviderOAuthStartResult } from "../components/provider-auth-modal";
 import ShareWorkspaceModal from "../components/share-workspace-modal";
 import {
   Box,
+  BookOpen,
   ChevronDown,
   ChevronRight,
   Circle,
+  Gauge,
   History,
   HeartPulse,
   Loader2,
@@ -222,6 +225,7 @@ export type DashboardViewProps = {
   reloadMcpEngine: () => void;
   createSessionAndOpen: () => void;
   setPrompt: (value: string) => void;
+  sessionStatusById: Record<string, string>;
   selectSession: (sessionId: string) => Promise<void> | void;
   defaultModelLabel: string;
   defaultModelRef: string;
@@ -543,15 +547,17 @@ export default function DashboardView(props: DashboardViewProps) {
   const soulNavIconClass = () => (soulModeEnabled() ? "soul-nav-icon-active" : "");
 
   const navItem = (t: DashboardTab, label: any, icon: any) => {
-    const active = () => props.tab === t || (t === "mcp" && props.tab === "plugins");
+    const active = () => props.view === "dashboard" && (props.tab === t || (t === "mcp" && props.tab === "plugins"));
     return (
       <button
-        class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${
-          active()
-            ? "bg-dls-active text-dls-text"
-            : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
-        }`}
-        onClick={() => props.setTab(t)}
+        class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${active()
+          ? "bg-dls-active text-dls-text"
+          : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+          }`}
+        onClick={() => {
+          props.setTab(t);
+          props.setView("dashboard");
+        }}
       >
         {icon}
         {label}
@@ -861,9 +867,16 @@ export default function DashboardView(props: DashboardViewProps) {
     openSettings("advanced");
   };
 
+  const logoSrc = () => "/maya-v1-logo.png";
+
   return (
-    <div class="flex h-screen w-full bg-dls-surface text-dls-text font-sans overflow-hidden">
-      <aside class="w-64 hidden md:flex flex-col bg-dls-sidebar border-r border-dls-border p-4">
+    <div class="flex h-screen w-full text-dls-text overflow-hidden" style={{ background: "var(--bg-gradient)", "background-attachment": "fixed" }}>
+      <aside class="w-64 hidden md:flex flex-col border-r p-4" style={{ background: "var(--glass-bg)", "backdrop-filter": "blur(20px)", "-webkit-backdrop-filter": "blur(20px)", "border-right": "1px solid var(--glass-stroke-soft)" }}>
+        {/* Maya branding */}
+        <div class="flex flex-col items-center gap-3 mb-8 px-1 pt-2 cursor-pointer" onClick={() => props.setView("mission-control")}>
+          <img src={logoSrc()} alt="Maya" class="h-20 w-auto drop-shadow-md" />
+          <span class="text-lg font-bold tracking-tight" style={{ color: "var(--dls-text-primary)" }}>MAYA</span>
+        </div>
         <div class="flex-1 overflow-y-auto">
           <Show when={showUpdatePill()}>
             <button
@@ -955,11 +968,10 @@ export default function DashboardView(props: DashboardViewProps) {
                         </Show>
                         <Show when={group.status === "error"}>
                           <span
-                            class={`text-[10px] px-2 py-0.5 rounded-full border ${
-                              taskLoadError().tone === "offline"
-                                ? "border-amber-7/50 text-amber-11 bg-amber-3/30"
-                                : "border-red-7/50 text-red-11 bg-red-3/30"
-                            }`}
+                            class={`text-[10px] px-2 py-0.5 rounded-full border ${taskLoadError().tone === "offline"
+                              ? "border-amber-7/50 text-amber-11 bg-amber-3/30"
+                              : "border-red-7/50 text-red-11 bg-red-3/30"
+                              }`}
                             title={taskLoadError().title}
                           >
                             {taskLoadError().label}
@@ -1095,11 +1107,10 @@ export default function DashboardView(props: DashboardViewProps) {
                                   <div
                                     role="button"
                                     tabIndex={0}
-                                    class={`group flex items-center justify-between h-8 px-3 rounded-lg cursor-pointer relative overflow-hidden ml-2 w-[calc(100%-0.5rem)] ${
-                                      isSelected()
-                                        ? "bg-dls-active text-dls-text"
-                                        : "hover:bg-dls-hover"
-                                    }`}
+                                    class={`group flex items-center justify-between h-8 px-3 rounded-lg cursor-pointer relative overflow-hidden ml-2 w-[calc(100%-0.5rem)] ${isSelected()
+                                      ? "bg-dls-active text-dls-text"
+                                      : "hover:bg-dls-hover"
+                                      }`}
                                     onClick={() => openSessionFromList(workspace().id, session.id)}
                                     onKeyDown={(event) => {
                                       if (event.key !== "Enter" && event.key !== " ") return;
@@ -1129,11 +1140,10 @@ export default function DashboardView(props: DashboardViewProps) {
                               fallback={
                                 <Show when={group.status === "error"}>
                                   <div
-                                    class={`w-full px-3 py-2 text-xs ml-2 text-left rounded-lg border ${
-                                      taskLoadError().tone === "offline"
-                                        ? "text-amber-11 bg-amber-3/20 border-amber-7/40"
-                                        : "text-red-11 bg-red-3/20 border-red-7/40"
-                                    }`}
+                                    class={`w-full px-3 py-2 text-xs ml-2 text-left rounded-lg border ${taskLoadError().tone === "offline"
+                                      ? "text-amber-11 bg-amber-3/20 border-amber-7/40"
+                                      : "text-red-11 bg-red-3/20 border-red-7/40"
+                                      }`}
                                     title={taskLoadError().title}
                                   >
                                     {taskLoadError().message}
@@ -1148,11 +1158,10 @@ export default function DashboardView(props: DashboardViewProps) {
                                     <div
                                       role="button"
                                       tabIndex={0}
-                                      class={`group flex items-center justify-between h-8 px-3 rounded-lg cursor-pointer relative overflow-hidden ml-2 w-[calc(100%-0.5rem)] ${
-                                        isSelected()
-                                          ? "bg-dls-active text-dls-text"
-                                          : "hover:bg-dls-hover"
-                                      }`}
+                                      class={`group flex items-center justify-between h-8 px-3 rounded-lg cursor-pointer relative overflow-hidden ml-2 w-[calc(100%-0.5rem)] ${isSelected()
+                                        ? "bg-dls-active text-dls-text"
+                                        : "hover:bg-dls-hover"
+                                        }`}
                                       onClick={() => openSessionFromList(workspace().id, session.id)}
                                       onKeyDown={(event) => {
                                         if (event.key !== "Enter" && event.key !== " ") return;
@@ -1260,202 +1269,203 @@ export default function DashboardView(props: DashboardViewProps) {
 
       </aside>
 
-      <main class="flex-1 flex flex-col overflow-hidden bg-dls-surface">
+      <main class="flex-1 flex flex-col overflow-hidden" style={{ background: "transparent" }}>
         <div class="flex-1 overflow-y-auto">
-        <header class="h-14 flex items-center justify-between px-6 md:px-10 border-b border-dls-border sticky top-0 bg-dls-surface z-10">
-          <div class="flex items-center gap-3">
-            <Show when={showUpdatePill()}>
-              <button
-                type="button"
-                class={`md:hidden flex items-center gap-1.5 rounded-full border bg-dls-surface px-2.5 py-1 text-xs font-medium shadow-sm transition-colors active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(var(--dls-accent-rgb),0.2)] ${updatePillBorderTone()} ${updatePillButtonTone()}`}
-                onClick={handleUpdatePillClick}
-                title={updatePillTitle()}
-                aria-label={updatePillTitle()}
-              >
-                <Show
-                  when={props.updateStatus?.state === "downloading"}
-                  fallback={
-                    <Circle
-                      size={8}
-                      class={`${updatePillDotTone()} shrink-0 ${props.updateStatus?.state === "available" ? "animate-pulse" : ""}`}
-                    />
-                  }
+          <header class="h-14 flex items-center justify-between px-6 md:px-10 sticky top-0 z-10 glass-header">
+            <div class="flex items-center gap-3">
+              <Show when={showUpdatePill()}>
+                <button
+                  type="button"
+                  class={`md:hidden flex items-center gap-1.5 rounded-full border bg-dls-surface px-2.5 py-1 text-xs font-medium shadow-sm transition-colors active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(var(--dls-accent-rgb),0.2)] ${updatePillBorderTone()} ${updatePillButtonTone()}`}
+                  onClick={handleUpdatePillClick}
+                  title={updatePillTitle()}
+                  aria-label={updatePillTitle()}
                 >
-                  <Loader2 size={13} class={`animate-spin shrink-0 ${updatePillDotTone()}`} />
-                </Show>
-                <span class="text-[11px]">{updatePillLabel()}</span>
-                <Show when={props.updateStatus?.version}>
-                  {(version) => (
-                    <span class={`hidden sm:inline font-mono text-[10px] ${updatePillVersionTone()}`}>v{version()}</span>
-                  )}
-                </Show>
-              </button>
-            </Show>
-            <div class="px-3 py-1.5 rounded-xl bg-dls-hover text-xs text-dls-secondary font-medium">
-              {props.activeWorkspaceDisplay.name}
-            </div>
-            <Show when={props.activeSoulStatus?.enabled}>
-              <div class="inline-flex items-center gap-1 rounded-full border border-rose-7/40 bg-rose-3/40 px-2 py-1 text-[11px] text-rose-11">
-                <HeartPulse size={11} />
-                Soul on
+                  <Show
+                    when={props.updateStatus?.state === "downloading"}
+                    fallback={
+                      <Circle
+                        size={8}
+                        class={`${updatePillDotTone()} shrink-0 ${props.updateStatus?.state === "available" ? "animate-pulse" : ""}`}
+                      />
+                    }
+                  >
+                    <Loader2 size={13} class={`animate-spin shrink-0 ${updatePillDotTone()}`} />
+                  </Show>
+                  <span class="text-[11px]">{updatePillLabel()}</span>
+                  <Show when={props.updateStatus?.version}>
+                    {(version) => (
+                      <span class={`hidden sm:inline font-mono text-[10px] ${updatePillVersionTone()}`}>v{version()}</span>
+                    )}
+                  </Show>
+                </button>
+              </Show>
+              <div class="px-3 py-1.5 rounded-xl bg-dls-hover text-xs text-dls-secondary font-medium">
+                {props.activeWorkspaceDisplay.name}
               </div>
-            </Show>
-            <h1 class="text-lg font-medium">{title()}</h1>
-            <Show when={props.developerMode}>
-              <span class="text-xs text-dls-secondary">{props.headerStatus}</span>
-            </Show>
-            <Show when={props.busyHint}>
-              <span class="text-xs text-dls-secondary">{props.busyHint}</span>
-            </Show>
-          </div>
-          <div class="flex items-center gap-2" />
-        </header>
+              <Show when={props.activeSoulStatus?.enabled}>
+                <div class="inline-flex items-center gap-1 rounded-full border border-rose-7/40 bg-rose-3/40 px-2 py-1 text-[11px] text-rose-11">
+                  <HeartPulse size={11} />
+                  Soul on
+                </div>
+              </Show>
+              <h1 class="text-lg font-medium">{title()}</h1>
+              <Show when={props.developerMode}>
+                <span class="text-xs text-dls-secondary">{props.headerStatus}</span>
+              </Show>
+              <Show when={props.busyHint}>
+                <span class="text-xs text-dls-secondary">{props.busyHint}</span>
+              </Show>
+            </div>
+            <div class="flex items-center gap-2" />
+          </header>
 
-        <div class="p-6 md:p-10 max-w-5xl mx-auto space-y-10">
-          <Switch>
-            <Match when={props.tab === "scheduled"}>
-              <ScheduledTasksView
-                jobs={props.scheduledJobs}
-                source={props.scheduledJobsSource}
-                sourceReady={props.scheduledJobsSourceReady}
-                status={props.scheduledJobsStatus}
-                busy={props.scheduledJobsBusy}
-                lastUpdatedAt={props.scheduledJobsUpdatedAt}
-                refreshJobs={props.refreshScheduledJobs}
-                deleteJob={props.deleteScheduledJob}
-                isWindows={props.isWindows}
-                activeWorkspaceRoot={props.activeWorkspaceRoot}
-                createSessionAndOpen={props.createSessionAndOpen}
-                setPrompt={props.setPrompt}
-                newTaskDisabled={props.newTaskDisabled}
-                schedulerInstalled={props.schedulerPluginInstalled}
-                canEditPlugins={props.canEditPlugins}
-                addPlugin={props.addPlugin}
-                reloadWorkspaceEngine={props.reloadWorkspaceEngine}
-                reloadBusy={props.reloadBusy}
-                canReloadWorkspace={props.canReloadWorkspace}
-              />
-            </Match>
-            <Match when={props.tab === "soul"}>
-              <SoulView
-                workspaceName={props.activeWorkspaceDisplay.name}
-                workspaceRoot={props.activeWorkspaceRoot}
-                status={props.activeSoulStatus}
-                heartbeats={props.activeSoulHeartbeats}
-                loading={props.soulStatusBusy}
-                loadingHeartbeats={props.soulHeartbeatsBusy}
-                error={props.soulError}
-                newTaskDisabled={props.newTaskDisabled}
-                refresh={props.refreshSoulData}
-                runSoulPrompt={props.runSoulPrompt}
-              />
-            </Match>
-            <Match when={props.tab === "skills"}>
-              <SkillsView
-                workspaceName={props.activeWorkspaceDisplay.name}
-                busy={props.busy}
-                canInstallSkillCreator={props.canInstallSkillCreator}
-                canUseDesktopTools={props.canUseDesktopTools}
-                accessHint={props.skillsAccessHint}
-                refreshSkills={props.refreshSkills}
-                refreshHubSkills={props.refreshHubSkills}
-                skills={props.skills}
-                skillsStatus={props.skillsStatus}
-                hubSkills={props.hubSkills}
-                hubSkillsStatus={props.hubSkillsStatus}
-                importLocalSkill={props.importLocalSkill}
-                installSkillCreator={props.installSkillCreator}
-                installHubSkill={props.installHubSkill}
-                revealSkillsFolder={props.revealSkillsFolder}
-                uninstallSkill={props.uninstallSkill}
-                readSkill={props.readSkill}
-                saveSkill={props.saveSkill}
-                createSessionAndOpen={props.createSessionAndOpen}
-                setPrompt={props.setPrompt}
-              />
-            </Match>
+          <div class="p-6 md:p-10 max-w-5xl mx-auto space-y-10">
+            <Switch>
+              <Match when={props.tab === "scheduled"}>
+                <ScheduledTasksView
+                  jobs={props.scheduledJobs}
+                  source={props.scheduledJobsSource}
+                  sourceReady={props.scheduledJobsSourceReady}
+                  status={props.scheduledJobsStatus}
+                  busy={props.scheduledJobsBusy}
+                  lastUpdatedAt={props.scheduledJobsUpdatedAt}
+                  refreshJobs={props.refreshScheduledJobs}
+                  deleteJob={props.deleteScheduledJob}
+                  isWindows={props.isWindows}
+                  activeWorkspaceRoot={props.activeWorkspaceRoot}
+                  createSessionAndOpen={props.createSessionAndOpen}
+                  setPrompt={props.setPrompt}
+                  newTaskDisabled={props.newTaskDisabled}
+                  schedulerInstalled={props.schedulerPluginInstalled}
+                  canEditPlugins={props.canEditPlugins}
+                  addPlugin={props.addPlugin}
+                  reloadWorkspaceEngine={props.reloadWorkspaceEngine}
+                  reloadBusy={props.reloadBusy}
+                  canReloadWorkspace={props.canReloadWorkspace}
+                />
+              </Match>
+              <Match when={props.tab === "soul"}>
+                <SoulView
+                  workspaceName={props.activeWorkspaceDisplay.name}
+                  workspaceRoot={props.activeWorkspaceRoot}
+                  status={props.activeSoulStatus}
+                  heartbeats={props.activeSoulHeartbeats}
+                  loading={props.soulStatusBusy}
+                  loadingHeartbeats={props.soulHeartbeatsBusy}
+                  error={props.soulError}
+                  newTaskDisabled={props.newTaskDisabled}
+                  refresh={props.refreshSoulData}
+                  runSoulPrompt={props.runSoulPrompt}
+                />
+              </Match>
+              <Match when={props.tab === "skills"}>
+                <SkillsView
+                  workspaceName={props.activeWorkspaceDisplay.name}
+                  activeWorkspaceRoot={props.activeWorkspaceRoot}
+                  busy={props.busy}
+                  canInstallSkillCreator={props.canInstallSkillCreator}
+                  canUseDesktopTools={props.canUseDesktopTools}
+                  accessHint={props.skillsAccessHint}
+                  refreshSkills={props.refreshSkills}
+                  refreshHubSkills={props.refreshHubSkills}
+                  skills={props.skills}
+                  skillsStatus={props.skillsStatus}
+                  hubSkills={props.hubSkills}
+                  hubSkillsStatus={props.hubSkillsStatus}
+                  importLocalSkill={props.importLocalSkill}
+                  installSkillCreator={props.installSkillCreator}
+                  installHubSkill={props.installHubSkill}
+                  revealSkillsFolder={props.revealSkillsFolder}
+                  uninstallSkill={props.uninstallSkill}
+                  readSkill={props.readSkill}
+                  saveSkill={props.saveSkill}
+                  createSessionAndOpen={props.createSessionAndOpen}
+                  setPrompt={props.setPrompt}
+                />
+              </Match>
 
-            <Match when={props.tab === "plugins" || props.tab === "mcp"}>
-              <ExtensionsView
-                initialSection={props.tab === "plugins" ? "plugins" : "mcp"}
-                setDashboardTab={props.setTab}
-                busy={props.busy}
-                activeWorkspaceRoot={props.activeWorkspaceRoot}
-                refreshMcpServers={props.refreshMcpServers}
-                mcpServers={props.mcpServers}
-                mcpStatus={props.mcpStatus}
-                mcpLastUpdatedAt={props.mcpLastUpdatedAt}
-                mcpStatuses={props.mcpStatuses}
-                mcpConnectingName={props.mcpConnectingName}
-                selectedMcp={props.selectedMcp}
-                setSelectedMcp={props.setSelectedMcp}
-                quickConnect={props.quickConnect}
-                connectMcp={props.connectMcp}
-                logoutMcpAuth={props.logoutMcpAuth}
-                removeMcp={props.removeMcp}
-                showMcpReloadBanner={props.showMcpReloadBanner}
-                reloadBlocked={props.mcpReloadBlocked}
-                reloadMcpEngine={props.reloadMcpEngine}
-                canEditPlugins={props.canEditPlugins}
-                canUseGlobalScope={props.canUseGlobalPluginScope}
-                accessHint={props.pluginsAccessHint}
-                pluginScope={props.pluginScope}
-                setPluginScope={props.setPluginScope}
-                pluginConfigPath={props.pluginConfigPath}
-                pluginList={props.pluginList}
-                pluginInput={props.pluginInput}
-                setPluginInput={props.setPluginInput}
-                pluginStatus={props.pluginStatus}
-                activePluginGuide={props.activePluginGuide}
-                setActivePluginGuide={props.setActivePluginGuide}
-                isPluginInstalled={props.isPluginInstalled}
-                suggestedPlugins={props.suggestedPlugins}
-                refreshPlugins={props.refreshPlugins}
-                addPlugin={props.addPlugin}
-              />
-            </Match>
+              <Match when={props.tab === "plugins" || props.tab === "mcp"}>
+                <ExtensionsView
+                  initialSection={props.tab === "plugins" ? "plugins" : "mcp"}
+                  setDashboardTab={props.setTab}
+                  busy={props.busy}
+                  activeWorkspaceRoot={props.activeWorkspaceRoot}
+                  refreshMcpServers={props.refreshMcpServers}
+                  mcpServers={props.mcpServers}
+                  mcpStatus={props.mcpStatus}
+                  mcpLastUpdatedAt={props.mcpLastUpdatedAt}
+                  mcpStatuses={props.mcpStatuses}
+                  mcpConnectingName={props.mcpConnectingName}
+                  selectedMcp={props.selectedMcp}
+                  setSelectedMcp={props.setSelectedMcp}
+                  quickConnect={props.quickConnect}
+                  connectMcp={props.connectMcp}
+                  logoutMcpAuth={props.logoutMcpAuth}
+                  removeMcp={props.removeMcp}
+                  showMcpReloadBanner={props.showMcpReloadBanner}
+                  reloadBlocked={props.mcpReloadBlocked}
+                  reloadMcpEngine={props.reloadMcpEngine}
+                  canEditPlugins={props.canEditPlugins}
+                  canUseGlobalScope={props.canUseGlobalPluginScope}
+                  accessHint={props.pluginsAccessHint}
+                  pluginScope={props.pluginScope}
+                  setPluginScope={props.setPluginScope}
+                  pluginConfigPath={props.pluginConfigPath}
+                  pluginList={props.pluginList}
+                  pluginInput={props.pluginInput}
+                  setPluginInput={props.setPluginInput}
+                  pluginStatus={props.pluginStatus}
+                  activePluginGuide={props.activePluginGuide}
+                  setActivePluginGuide={props.setActivePluginGuide}
+                  isPluginInstalled={props.isPluginInstalled}
+                  suggestedPlugins={props.suggestedPlugins}
+                  refreshPlugins={props.refreshPlugins}
+                  addPlugin={props.addPlugin}
+                />
+              </Match>
 
-            <Match when={props.tab === "identities"}>
-              <IdentitiesView
-                busy={props.busy}
-                openworkServerStatus={props.openworkServerStatus}
-                openworkServerUrl={props.openworkServerUrl}
-                openworkServerClient={props.openworkServerClient}
-                openworkReconnectBusy={props.openworkReconnectBusy}
-                reconnectOpenworkServer={props.reconnectOpenworkServer}
-                openworkServerWorkspaceId={props.openworkServerWorkspaceId}
-                activeWorkspaceRoot={props.activeWorkspaceRoot}
-                developerMode={props.developerMode}
-              />
-            </Match>
+              <Match when={props.tab === "identities"}>
+                <IdentitiesView
+                  busy={props.busy}
+                  openworkServerStatus={props.openworkServerStatus}
+                  openworkServerUrl={props.openworkServerUrl}
+                  openworkServerClient={props.openworkServerClient}
+                  openworkReconnectBusy={props.openworkReconnectBusy}
+                  reconnectOpenworkServer={props.reconnectOpenworkServer}
+                  openworkServerWorkspaceId={props.openworkServerWorkspaceId}
+                  activeWorkspaceRoot={props.activeWorkspaceRoot}
+                  developerMode={props.developerMode}
+                />
+              </Match>
 
-            <Match when={props.tab === "config" && props.developerMode}>
-              <ConfigView
-                busy={props.busy}
-                clientConnected={props.clientConnected}
-                anyActiveRuns={props.anyActiveRuns}
-                openworkServerStatus={props.openworkServerStatus}
-                openworkServerUrl={props.openworkServerUrl}
-                openworkServerSettings={props.openworkServerSettings}
-                openworkServerHostInfo={props.openworkServerHostInfo}
-                openworkServerWorkspaceId={props.openworkServerWorkspaceId}
-                updateOpenworkServerSettings={props.updateOpenworkServerSettings}
-                resetOpenworkServerSettings={props.resetOpenworkServerSettings}
-                testOpenworkServerConnection={props.testOpenworkServerConnection}
-                canReloadWorkspace={props.canReloadWorkspace}
-                reloadWorkspaceEngine={props.reloadWorkspaceEngine}
-                reloadBusy={props.reloadBusy}
-                reloadError={props.reloadError}
-                workspaceAutoReloadAvailable={props.workspaceAutoReloadAvailable}
-                workspaceAutoReloadEnabled={props.workspaceAutoReloadEnabled}
-                setWorkspaceAutoReloadEnabled={props.setWorkspaceAutoReloadEnabled}
-                workspaceAutoReloadResumeEnabled={props.workspaceAutoReloadResumeEnabled}
-                setWorkspaceAutoReloadResumeEnabled={props.setWorkspaceAutoReloadResumeEnabled}
-                developerMode={props.developerMode}
-              />
-            </Match>
+              <Match when={props.tab === "config" && props.developerMode}>
+                <ConfigView
+                  busy={props.busy}
+                  clientConnected={props.clientConnected}
+                  anyActiveRuns={props.anyActiveRuns}
+                  openworkServerStatus={props.openworkServerStatus}
+                  openworkServerUrl={props.openworkServerUrl}
+                  openworkServerSettings={props.openworkServerSettings}
+                  openworkServerHostInfo={props.openworkServerHostInfo}
+                  openworkServerWorkspaceId={props.openworkServerWorkspaceId}
+                  updateOpenworkServerSettings={props.updateOpenworkServerSettings}
+                  resetOpenworkServerSettings={props.resetOpenworkServerSettings}
+                  testOpenworkServerConnection={props.testOpenworkServerConnection}
+                  canReloadWorkspace={props.canReloadWorkspace}
+                  reloadWorkspaceEngine={props.reloadWorkspaceEngine}
+                  reloadBusy={props.reloadBusy}
+                  reloadError={props.reloadError}
+                  workspaceAutoReloadAvailable={props.workspaceAutoReloadAvailable}
+                  workspaceAutoReloadEnabled={props.workspaceAutoReloadEnabled}
+                  setWorkspaceAutoReloadEnabled={props.setWorkspaceAutoReloadEnabled}
+                  workspaceAutoReloadResumeEnabled={props.workspaceAutoReloadResumeEnabled}
+                  setWorkspaceAutoReloadResumeEnabled={props.setWorkspaceAutoReloadResumeEnabled}
+                  developerMode={props.developerMode}
+                />
+              </Match>
 
-            <Match when={props.tab === "settings"}>
+              <Match when={props.tab === "settings"}>
                 <SettingsView
                   startupPreference={props.startupPreference}
                   baseUrl={props.baseUrl}
@@ -1540,77 +1550,82 @@ export default function DashboardView(props: DashboardViewProps) {
                   notionBusy={props.notionBusy}
                   connectNotion={props.connectNotion}
                 />
+              </Match>
 
-            </Match>
-          </Switch>
-        </div>
-
-        <Show when={props.error}>
-          <div class="mx-auto max-w-5xl px-6 md:px-10 pb-24 md:pb-10">
-            <div class="rounded-2xl bg-red-1/40 px-5 py-4 text-sm text-red-12 border border-red-7/20 space-y-3">
-              <div>{props.error}</div>
-              <Show when={props.developerMode}>
-                <div class="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    class="text-xs h-8 py-0 px-3"
-                    onClick={props.repairOpencodeCache}
-                    disabled={props.cacheRepairBusy || !props.developerMode}
-                  >
-                    {props.cacheRepairBusy ? "Repairing cache" : "Repair cache"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    class="text-xs h-8 py-0 px-3"
-                    onClick={props.stopHost}
-                    disabled={props.busy}
-                  >
-                    Retry
-                  </Button>
-                  <Show when={props.cacheRepairResult}>
-                    <span class="text-xs text-red-12/80">
-                      {props.cacheRepairResult}
-                    </span>
-                  </Show>
-                </div>
-              </Show>
-            </div>
+              <Match when={props.tab === "docs"}>
+                <DocsView
+                  activeWorkspaceRoot={props.activeWorkspaceRoot}
+                />
+              </Match>
+            </Switch>
           </div>
-        </Show>
 
-        <ProviderAuthModal
-          open={props.providerAuthModalOpen}
-          loading={props.providerAuthBusy}
-          submitting={providerAuthActionBusy()}
-          error={props.providerAuthError}
-          providers={props.providers}
-          connectedProviderIds={props.providerConnectedIds}
-          authMethods={props.providerAuthMethods}
-          onSelect={handleProviderAuthSelect}
-          onSubmitApiKey={handleProviderAuthApiKey}
-          onSubmitOAuth={handleProviderAuthOAuth}
-          onClose={props.closeProviderAuthModal}
-        />
+          <Show when={props.error}>
+            <div class="mx-auto max-w-5xl px-6 md:px-10 pb-24 md:pb-10">
+              <div class="rounded-2xl bg-red-1/40 px-5 py-4 text-sm text-red-12 border border-red-7/20 space-y-3">
+                <div>{props.error}</div>
+                <Show when={props.developerMode}>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      class="text-xs h-8 py-0 px-3"
+                      onClick={props.repairOpencodeCache}
+                      disabled={props.cacheRepairBusy || !props.developerMode}
+                    >
+                      {props.cacheRepairBusy ? "Repairing cache" : "Repair cache"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      class="text-xs h-8 py-0 px-3"
+                      onClick={props.stopHost}
+                      disabled={props.busy}
+                    >
+                      Retry
+                    </Button>
+                    <Show when={props.cacheRepairResult}>
+                      <span class="text-xs text-red-12/80">
+                        {props.cacheRepairResult}
+                      </span>
+                    </Show>
+                  </div>
+                </Show>
+              </div>
+            </div>
+          </Show>
 
-        <ShareWorkspaceModal
-          open={Boolean(shareWorkspaceId())}
-          onClose={() => setShareWorkspaceId(null)}
-          workspaceName={shareWorkspaceName()}
-          workspaceDetail={shareWorkspaceDetail()}
-          fields={shareFields()}
-          note={shareNote()}
-          onExportConfig={
-            exportDisabledReason()
-              ? undefined
-              : () => {
-                const id = shareWorkspaceId();
-                if (!id) return;
-                props.exportWorkspaceConfig(id);
-              }
-          }
-          exportDisabledReason={exportDisabledReason()}
-          onOpenBots={openConfig}
-        />
+          <ProviderAuthModal
+            open={props.providerAuthModalOpen}
+            loading={props.providerAuthBusy}
+            submitting={providerAuthActionBusy()}
+            error={props.providerAuthError}
+            providers={props.providers}
+            connectedProviderIds={props.providerConnectedIds}
+            authMethods={props.providerAuthMethods}
+            onSelect={handleProviderAuthSelect}
+            onSubmitApiKey={handleProviderAuthApiKey}
+            onSubmitOAuth={handleProviderAuthOAuth}
+            onClose={props.closeProviderAuthModal}
+          />
+
+          <ShareWorkspaceModal
+            open={Boolean(shareWorkspaceId())}
+            onClose={() => setShareWorkspaceId(null)}
+            workspaceName={shareWorkspaceName()}
+            workspaceDetail={shareWorkspaceDetail()}
+            fields={shareFields()}
+            note={shareNote()}
+            onExportConfig={
+              exportDisabledReason()
+                ? undefined
+                : () => {
+                  const id = shareWorkspaceId();
+                  if (!id) return;
+                  props.exportWorkspaceConfig(id);
+                }
+            }
+            exportDisabledReason={exportDisabledReason()}
+            onOpenBots={openConfig}
+          />
         </div>
 
         <StatusBar
@@ -1624,48 +1639,50 @@ export default function DashboardView(props: DashboardViewProps) {
           providerConnectedIds={props.providerConnectedIds}
           mcpStatuses={props.mcpStatuses}
         />
-        <nav class="md:hidden border-t border-dls-border bg-dls-surface">
-          <div class={`mx-auto max-w-5xl px-4 py-3 grid gap-2 ${props.developerMode ? "grid-cols-6" : "grid-cols-5"}`}>
+        <nav class="md:hidden border-t" style={{ background: "var(--glass-bg)", "backdrop-filter": "blur(20px)", "-webkit-backdrop-filter": "blur(20px)", "border-top": "1px solid var(--glass-stroke-soft)" }}>
+          <div class={`mx-auto max-w-5xl px-4 py-3 grid gap-2 ${props.developerMode ? "grid-cols-7" : "grid-cols-6"}`}>
             <button
-              class={`flex flex-col items-center gap-1 text-xs ${
-                props.tab === "scheduled" ? "text-gray-12" : "text-gray-10"
-              }`}
+              class={`flex flex-col items-center gap-1 text-xs ${props.tab === "scheduled" ? "text-gray-12" : "text-gray-10"
+                }`}
               onClick={() => props.setTab("scheduled")}
             >
               <History size={18} />
               Automations
             </button>
             <button
-              class={`flex flex-col items-center gap-1 text-xs ${
-                props.tab === "soul" ? "text-gray-12" : "text-gray-10"
-              }`}
+              class={`flex flex-col items-center gap-1 text-xs text-gray-10`}
+              onClick={() => props.setView("mission-control")}
+            >
+              <span class="material-symbols-outlined text-[18px]">blur_on</span>
+              Control
+            </button>
+            <button
+              class={`flex flex-col items-center gap-1 text-xs ${props.tab === "soul" ? "text-gray-12" : "text-gray-10"
+                }`}
               onClick={() => props.setTab("soul")}
             >
               <HeartPulse size={18} class={soulNavIconClass()} />
               Soul
             </button>
             <button
-              class={`flex flex-col items-center gap-1 text-xs ${
-                props.tab === "skills" ? "text-gray-12" : "text-gray-10"
-              }`}
+              class={`flex flex-col items-center gap-1 text-xs ${props.tab === "skills" ? "text-gray-12" : "text-gray-10"
+                }`}
               onClick={() => props.setTab("skills")}
             >
               <Zap size={18} />
               Skills
             </button>
             <button
-              class={`flex flex-col items-center gap-1 text-xs ${
-                props.tab === "mcp" || props.tab === "plugins" ? "text-gray-12" : "text-gray-10"
-              }`}
+              class={`flex flex-col items-center gap-1 text-xs ${props.tab === "mcp" || props.tab === "plugins" ? "text-gray-12" : "text-gray-10"
+                }`}
               onClick={() => props.setTab("mcp")}
             >
               <Box size={18} />
               Extensions
             </button>
             <button
-              class={`flex flex-col items-center gap-1 text-xs ${
-                props.tab === "identities" ? "text-gray-12" : "text-gray-10"
-              }`}
+              class={`flex flex-col items-center gap-1 text-xs ${props.tab === "identities" ? "text-gray-12" : "text-gray-10"
+                }`}
               onClick={() => props.setTab("identities")}
             >
               <MessageCircle size={18} />
@@ -1673,22 +1690,40 @@ export default function DashboardView(props: DashboardViewProps) {
             </button>
             <Show when={props.developerMode}>
               <button
-                class={`flex flex-col items-center gap-1 text-xs ${
-                  props.tab === "config" ? "text-gray-12" : "text-gray-10"
-                }`}
+                class={`flex flex-col items-center gap-1 text-xs ${props.tab === "config" ? "text-gray-12" : "text-gray-10"
+                  }`}
                 onClick={() => props.setTab("config")}
               >
                 <SlidersHorizontal size={18} />
                 Advanced
               </button>
             </Show>
+            <button
+              class={`flex flex-col items-center gap-1 text-xs ${props.tab === "docs" ? "text-gray-12" : "text-gray-10"
+                }`}
+              onClick={() => props.setTab("docs")}
+            >
+              <BookOpen size={18} />
+              Docs
+            </button>
           </div>
         </nav>
       </main>
 
-      <aside class="w-56 hidden md:flex flex-col bg-dls-sidebar border-l border-dls-border p-4">
+      <aside class="w-56 hidden md:flex flex-col p-4 border-l" style={{ background: "var(--glass-bg)", "backdrop-filter": "blur(20px)", "-webkit-backdrop-filter": "blur(20px)", "border-left": "1px solid var(--glass-stroke-soft)" }}>
         <div class="space-y-1 pt-2">
           {navItem("scheduled", "Automations", <History size={18} />)}
+          <button
+            class={`w-full h-10 flex items-center gap-3 px-3 rounded-lg text-sm font-medium transition-colors ${props.view === "mission-control"
+              ? "bg-dls-active text-dls-text"
+              : "text-dls-secondary hover:text-dls-text hover:bg-dls-hover"
+              }`}
+            onClick={() => props.setView("mission-control")}
+          >
+            <Gauge size={18} class={props.view === "mission-control" ? "text-dls-accent" : "text-dls-secondary"} />
+            Mission Control
+          </button>
+          {navItem("docs", "Docs", <BookOpen size={18} />)}
           {navItem("soul", "Soul", <HeartPulse size={18} class={soulNavIconClass()} />)}
           {navItem("skills", "Skills", <Zap size={18} />)}
           {navItem("mcp", "Extensions", <Box size={18} />)}

@@ -15,7 +15,7 @@ import { readJsoncFile, updateJsoncTopLevel, writeJsoncFile } from "./jsonc.js";
 import { recordAudit, readAuditEntries, readLastAudit } from "./audit.js";
 import { ReloadEventStore } from "./events.js";
 import { parseFrontmatter } from "./frontmatter.js";
-import { opencodeConfigPath, openworkConfigPath, projectCommandsDir, projectSkillsDir } from "./workspace-files.js";
+import { opencodeConfigPath, mayaConfigPath, projectCommandsDir, projectSkillsDir } from "./workspace-files.js";
 import { ensureDir, exists, hashToken, shortId } from "./utils.js";
 import { workspaceIdForPath } from "./workspaces.js";
 import { sanitizeCommandName, validateMcpName } from "./validators.js";
@@ -44,10 +44,10 @@ function toUnixNano(): string {
 }
 
 export function createServerLogger(config: ServerConfig): ServerLogger {
-  const runId = process.env.OPENWORK_RUN_ID ?? shortId();
+  const runId = process.env.MAYA_RUN_ID ?? shortId();
   const host = hostname().trim();
   const resource: Record<string, string> = {
-    "service.name": "openwork-server",
+    "service.name": "maya-server",
     "service.version": SERVER_VERSION,
     "service.instance.id": runId,
   };

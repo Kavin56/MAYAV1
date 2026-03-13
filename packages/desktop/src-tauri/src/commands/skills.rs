@@ -2,6 +2,7 @@ use serde::Serialize;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use crate::paths::{candidate_xdg_config_dirs, home_dir};
 use crate::types::ExecResult;
@@ -552,5 +553,258 @@ pub fn uninstall_skill(project_dir: String, name: String) -> Result<ExecResult, 
         status: 0,
         stdout: format!("Removed skill {}", name),
         stderr: String::new(),
+    })
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CloneGitSkillResult {
+    pub ok: bool,
+    pub message: String,
+    pub skill_name: Option<String>,
+    pub skill_path: Option<String>,
+}
+
+fn parse_github_url(url: &str) -> Result<(String, String), String> {
+    let url = url.trim();
+
+    // Handle various GitHub URL formats
+    // https://github.com/owner/repo
+    // https://github.com/owner/repo.git
+    // git@github.com:owner/repo.git
+
+    let url = url.trim_end_matches('/');
+
+    // Check for SSH format
+    if url.starts_with("git@") {
+        let parts: Vec<&str> = url.split(':').collect();
+        if parts.len() != 2 {
+            return Err("Invalid GitHub SSH URL format".to_string());
+        }
+        let repo_path = parts[1].trim_end_matches(".git");
+        let parts: Vec<&str> = repo_path.split('/').collect();
+        if parts.len() != 2 {
+            return Err("Invalid repository path".to_string());
+        }
+        return Ok((parts[0].to_string(), parts[1].to_string()));
+    }
+
+    // Check for HTTPS format
+    let path = url.trim_start_matches("https://github.com/");
+    let path = path.trim_start_matches("http://github.com/");
+    let path = path.trim_end_matches(".git");
+
+    let parts: Vec<&str> = path.split('/').collect();
+    if parts.len() != 2 {
+        return Err("Invalid GitHub URL. Use format: https://github.com/owner/repo".to_string());
+    }
+
+    Ok((parts[0].to_string(), parts[1].to_string()))
+}
+
+fn get_global_skills_dir() -> Result<PathBuf, String> {
+    // Try to find the global OpenCode skills directory
+    for dir in candidate_xdg_config_dirs() {
+        let opencode_root = dir.join("opencode").join("skills");
+        if opencode_root.is_dir() {
+            return Ok(opencode_root);
+        }
+    }
+
+    // Fallback to ~/.opencode/skills
+    if let Some(home) = home_dir() {
+        let fallback = home.join(".opencode").join("skills");
+        fs::create_dir_all(&fallback)
+            .map_err(|e| format!("Failed to create skills directory: {}", e))?;
+        return Ok(fallback);
+    }
+
+    Err("Could not find or create global skills directory".to_string())
+}
+
+fn validate_claude_skill(path: &Path) -> Result<String, String> {
+    // Check for SKILL.md file
+    let skill_md = path.join("SKILL.md");
+    if !skill_md.is_file() {
+        return Err("Repository does not contain a SKILL.md file. This doesn't appear to be a Claude skill.".to_string());
+    }
+
+    // Extract skill name from folder name
+    let name = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or("Invalid skill folder name")?;
+
+    Ok(name.to_string())
+}
+
+fn install_dependencies(skill_path: &Path) -> Result<(), String> {
+    let package_json = skill_path.join("package.json");
+
+    if !package_json.is_file() {
+        // No package.json, nothing to install
+        return Ok(());
+    }
+
+    // Check for pnpm first, then npm
+    let package_manager = if Command::new("pnpm").arg("--version").output().is_ok() {
+        "pnpm"
+    } else if Command::new("npm").arg("--version").output().is_ok() {
+        "npm"
+    } else {
+        return Err(
+            "Neither pnpm nor npm is installed. Please install dependencies manually.".to_string(),
+        );
+    };
+
+    // Run install
+    let output = Command::new(package_manager)
+        .arg("install")
+        .current_dir(skill_path)
+        .output()
+        .map_err(|e| format!("Failed to run {} install: {}", package_manager, e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Failed to install dependencies: {}", stderr));
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn clone_github_skill(
+    url: String,
+    token: Option<String>,
+    project_dir: String,
+) -> Result<CloneGitSkillResult, String> {
+    // Parse the GitHub URL
+    let (owner, repo) = match parse_github_url(&url) {
+        Ok(parsed) => parsed,
+        Err(e) => {
+            return Ok(CloneGitSkillResult {
+                ok: false,
+                message: e,
+                skill_name: None,
+                skill_path: None,
+            });
+        }
+    };
+
+    // Get the skills directory
+    let skills_dir = match ensure_project_skill_root(&project_dir) {
+        Ok(dir) => dir,
+        Err(e) => {
+            return Ok(CloneGitSkillResult {
+                ok: false,
+                message: format!("Failed to get skills directory: {}", e),
+                skill_name: None,
+                skill_path: None,
+            });
+        }
+    };
+
+    let target_dir = skills_dir.join(&repo);
+
+    // Remove existing directory if it exists
+    if target_dir.exists() {
+        if let Err(e) = fs::remove_dir_all(&target_dir) {
+            return Ok(CloneGitSkillResult {
+                ok: false,
+                message: format!("Failed to remove existing skill: {}", e),
+                skill_name: None,
+                skill_path: None,
+            });
+        }
+    }
+
+    // Build the git clone URL with token if provided
+    let clone_url = if let Some(t) = &token {
+        if !t.is_empty() {
+            format!("https://{}@github.com/{}/{}.git", t, owner, repo)
+        } else {
+            format!("https://github.com/{}/{}.git", owner, repo)
+        }
+    } else {
+        format!("https://github.com/{}/{}.git", owner, repo)
+    };
+
+    // Clone the repository
+    let output = Command::new("git")
+        .args([
+            "clone",
+            "--depth",
+            "1",
+            &clone_url,
+            target_dir.to_str().unwrap(),
+        ])
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            // Good!
+        }
+        Ok(out) => {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let message = if stderr.contains("Authentication failed")
+                || stderr.contains("Could not read from remote")
+            {
+                "Authentication failed. Please check your GitHub token or ensure the repository is public.".to_string()
+            } else if stderr.contains("not found") || stderr.contains("Repository not found") {
+                format!("Repository not found: {}/{}", owner, repo)
+            } else {
+                format!("Failed to clone repository: {}", stderr)
+            };
+
+            // Clean up failed clone
+            let _ = fs::remove_dir_all(&target_dir);
+
+            return Ok(CloneGitSkillResult {
+                ok: false,
+                message,
+                skill_name: None,
+                skill_path: None,
+            });
+        }
+        Err(e) => {
+            return Ok(CloneGitSkillResult {
+                ok: false,
+                message: format!("Failed to run git: {}", e),
+                skill_name: None,
+                skill_path: None,
+            });
+        }
+    }
+
+    // Validate it's a skill repository
+    let skill_name = match validate_claude_skill(&target_dir) {
+        Ok(name) => name,
+        Err(e) => {
+            // Clean up invalid skill
+            let _ = fs::remove_dir_all(&target_dir);
+            return Ok(CloneGitSkillResult {
+                ok: false,
+                message: e,
+                skill_name: None,
+                skill_path: None,
+            });
+        }
+    };
+
+    // Install dependencies if needed
+    if let Err(e) = install_dependencies(&target_dir) {
+        return Ok(CloneGitSkillResult {
+            ok: true,
+            message: format!("Skill cloned successfully but failed to install dependencies: {}. You can install them manually.", e),
+            skill_name: Some(skill_name),
+            skill_path: Some(target_dir.to_string_lossy().to_string()),
+        });
+    }
+
+    Ok(CloneGitSkillResult {
+        ok: true,
+        message: format!("Successfully installed skill '{}' from GitHub", skill_name),
+        skill_name: Some(skill_name),
+        skill_path: Some(target_dir.to_string_lossy().to_string()),
     })
 }

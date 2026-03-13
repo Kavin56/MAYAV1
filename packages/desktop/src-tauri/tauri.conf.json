@@ -1,21 +1,22 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "OpenWork",
-  "version": "0.11.121",
-  "identifier": "com.differentai.openwork",
+  "productName": "MAYA",
+  "version": "1.3.4",
+  "identifier": "com.maya.ai",
   "build": {
-    "beforeDevCommand": "node ./scripts/tauri-before-dev.mjs",
-    "beforeBuildCommand": "pnpm -C ../.. --filter @different-ai/openwork run prepare:sidecar && pnpm -w build:ui",
+    "beforeDevCommand": "node ./scripts/prepare-sidecar.mjs",
+    "beforeBuildCommand": "pnpm -C ../.. --filter maya-desktop run prepare:sidecar && pnpm -w build:ui",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../../app/dist"
   },
   "app": {
     "windows": [
       {
-        "title": "OpenWork",
+        "title": "MAYA",
         "width": 1180,
         "height": 820,
-        "resizable": true
+        "resizable": true,
+        "center": true
       }
     ],
     "security": {
@@ -23,7 +24,9 @@
     }
   },
   "bundle": {
-    "createUpdaterArtifacts": true,
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": false,
     "macOS": {
       "entitlements": "./entitlements.plist"
     },
@@ -36,9 +39,9 @@
     ],
     "externalBin": [
       "sidecars/opencode",
-      "sidecars/openwork-server",
+      "sidecars/maya-server",
       "sidecars/opencode-router",
-      "sidecars/openwork-orchestrator",
+      "sidecars/maya-orchestrator",
       "sidecars/chrome-devtools-mcp",
       "sidecars/versions.json"
     ]
@@ -47,14 +50,14 @@
     "deep-link": {
       "desktop": {
         "schemes": [
-          "openwork"
+          "maya"
         ]
       }
     },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwNDdCNTAwMTcxNUUxQTQKUldTazRSVVhBTFZIVUpNRi9OQnNRaElZY1NUWUQxS1ZJOTFUeUdPd2d6ZnFmMW5QV2xJQ1hXTTkK",
       "endpoints": [
-        "https://github.com/different-ai/openwork/releases/latest/download/latest.json"
+        "https://github.com/different-ai/maya/releases/latest/download/latest.json"
       ]
     }
   }
