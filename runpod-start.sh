@@ -70,28 +70,55 @@ start_python() {
 
 start_proxy() {
   ensure_caddy
-  echo "🌐 Starting proxy on 0.0.0.0:${PUBLIC_PORT}..."
+  echo "[MAYA] Starting proxy on 0.0.0.0:${PUBLIC_PORT}..."
+  mkdir -p tmp
   cat > tmp/Caddyfile <<EOF
 :${PUBLIC_PORT} {
-  @maya path /maya/*
-  handle @maya { uri strip_prefix /maya; reverse_proxy 127.0.0.1:${MAYA_PYTHON_PORT} }
-  handle { reverse_proxy 127.0.0.1:${OPENWORK_PORT} }
+  handle /maya/* {
+    uri strip_prefix /maya
+    reverse_proxy 127.0.0.1:${MAYA_PYTHON_PORT}
+  }
+  handle {
+    reverse_proxy 127.0.0.1:${OPENWORK_PORT}
+  }
 }
 EOF
   caddy run --config tmp/Caddyfile --adapter caddyfile >/tmp/caddy.log 2>&1 &
   CADDY_PID=$!
 }
 
+wait_for_port() {
+  local port=$1
+  local name=$2
+  echo "[MAYA] Waiting for $name on port $port..."
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    if curl -s -o /dev/null --connect-timeout 1 "http://127.0.0.1:${port}/" 2>/dev/null || true; then
+      echo "[MAYA] $name is up on port $port."
+      return 0
+    fi
+    sleep 1
+  done
+  echo "[MAYA] WARN: $name may not be listening on port $port yet. Check /tmp/*.log"
+}
+
 start_ngrok() {
   ensure_ngrok
-  echo "🔗 Starting ngrok -> localhost:${PUBLIC_PORT}"
+  echo "[MAYA] Starting ngrok -> localhost:${PUBLIC_PORT}"
   ngrok http "${PUBLIC_PORT}" --authtoken "${NGROK_AUTHTOKEN}" ${NGROK_DOMAIN:+--domain="${NGROK_DOMAIN}"} >/tmp/ngrok.log 2>&1 &
   NGROK_PID=$!
   [ -n "${NGROK_DOMAIN:-}" ] && echo "https://${NGROK_DOMAIN}" > tmp/public-url.txt || echo "(see /tmp/ngrok.log)" > tmp/public-url.txt
 }
 
 trap 'kill ${NGROK_PID:-} ${CADDY_PID:-} ${OPENWORK_PID:-} ${MAYA_PID:-} 2>/dev/null || true' EXIT
-start_openwork; start_python; start_proxy; start_ngrok
-echo "✅ Started. OpenWork: 127.0.0.1:${OPENWORK_PORT} | FastAPI: 127.0.0.1:${MAYA_PYTHON_PORT} | Public: $(cat tmp/public-url.txt)"
-echo "Logs: /tmp/openwork.log /tmp/maya-fastapi.log /tmp/caddy.log /tmp/ngrok.log"
+start_openwork
+sleep 3
+start_python
+sleep 2
+start_proxy
+sleep 2
+wait_for_port ${OPENWORK_PORT} "OpenWork"
+wait_for_port ${PUBLIC_PORT} "Caddy proxy"
+start_ngrok
+echo "[MAYA] Started. OpenWork: 127.0.0.1:${OPENWORK_PORT} | FastAPI: 127.0.0.1:${MAYA_PYTHON_PORT} | Public: $(cat tmp/public-url.txt 2>/dev/null)"
+echo "[MAYA] Logs: /tmp/openwork.log /tmp/maya-fastapi.log /tmp/caddy.log /tmp/ngrok.log"
 wait
