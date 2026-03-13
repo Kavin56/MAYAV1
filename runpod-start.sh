@@ -6,6 +6,7 @@ set -e
 
 # Always run from script directory so tmp/ and paths are correct
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" && pwd)"
+REPO_ROOT="$SCRIPT_DIR"
 cd "$SCRIPT_DIR"
 echo "[MAYA] Working directory: $(pwd)"
 
@@ -89,7 +90,6 @@ start_python() {
 
 start_proxy() {
   mkdir -p tmp
-  REPO_ROOT="$(pwd)"
   # Caddy: use absolute path so it works regardless of cwd
   ensure_caddy
   echo "[MAYA] Starting proxy on 0.0.0.0:${PUBLIC_PORT}..."
@@ -108,22 +108,24 @@ start_proxy() {
   }
 }
 EOF
-  caddy run --config "${REPO_ROOT}/tmp/Caddyfile" --adapter caddyfile >/tmp/caddy.log 2>&1 &
+  (cd "${REPO_ROOT}" && caddy run --config "${REPO_ROOT}/tmp/Caddyfile" --adapter caddyfile >/tmp/caddy.log 2>&1) &
   CADDY_PID=$!
 }
 
 start_python_proxy() {
   echo "[MAYA] Starting Python fallback proxy on 0.0.0.0:${PUBLIC_PORT}..."
+  TOKEN_FILE="${REPO_ROOT}/tmp/token.json"
   python3 -c "
-import http.server, urllib.request, json, os
+import http.server, urllib.request, os
+TOKEN_FILE = '''${TOKEN_FILE}'''
 class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/token'):
             try:
-                with open('tmp/token.json') as f: body = f.read()
+                with open(TOKEN_FILE) as f: body = f.read()
                 self.send_response(200); self.send_header('Content-type','application/json'); self.end_headers()
                 self.wfile.write(body.encode())
-            except: self.send_error(500)
+            except Exception: self.send_error(500)
             return
         url = ('http://127.0.0.1:${MAYA_PYTHON_PORT}' + self.path[5:]) if self.path.startswith('/maya') else 'http://127.0.0.1:${OPENWORK_PORT}' + self.path
         try:
@@ -167,19 +169,25 @@ start_ngrok() {
 
 trap 'kill ${NGROK_PID:-} ${CADDY_PID:-} ${OPENWORK_PID:-} ${MAYA_PID:-} 2>/dev/null || true' EXIT
 start_openwork
-sleep 5
+echo "[MAYA] Waiting for OpenWork to listen..."
+wait_for_port ${OPENWORK_PORT} "OpenWork" || exit 1
 extract_openwork_token
 start_python
 sleep 2
 start_proxy
-sleep 2
-wait_for_port ${OPENWORK_PORT} "OpenWork" || exit 1
+sleep 3
 if ! wait_for_port ${PUBLIC_PORT} "Caddy proxy"; then
   echo "[MAYA] Caddy did not start; trying Python proxy on ${PUBLIC_PORT}..."
   kill ${CADDY_PID:-} 2>/dev/null || true
+  sleep 1
   start_python_proxy
-  sleep 2
+  sleep 3
   wait_for_port ${PUBLIC_PORT} "Python proxy" || { echo "[MAYA] Proxy failed. See /tmp/caddy.log and /tmp/python-proxy.log"; exit 1; }
+fi
+# Final check: something must be listening on 8080 for ngrok
+if ! curl -s -o /dev/null --connect-timeout 2 "http://127.0.0.1:${PUBLIC_PORT}/" 2>/dev/null; then
+  echo "[MAYA] ERROR: Nothing responding on ${PUBLIC_PORT}. Start proxy manually or check logs."
+  exit 1
 fi
 start_ngrok
 echo "[MAYA] Started. OpenWork: 127.0.0.1:${OPENWORK_PORT} | FastAPI: 127.0.0.1:${MAYA_PYTHON_PORT} | Public: $(cat tmp/public-url.txt 2>/dev/null)"

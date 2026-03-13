@@ -63,7 +63,7 @@ export default {
   "dashboard.edit_remote_workspace_subtitle": "Update the OpenWork server details for this worker.",
   "dashboard.edit_remote_workspace_confirm": "Save connection",
   "dashboard.remote_workspace_title": "Remote worker",
-  "dashboard.remote_workspace_hint": "Track an OpenWork server and reconnect anytime.",
+  "dashboard.remote_workspace_hint": "Same as a local worker (OpenCode + OpenWork in a folder), but the folder lives on a server (e.g. RunPod) and you connect via its URL (e.g. ngrok).",
   "dashboard.remote_base_url_label": "OpenWork server URL",
   "dashboard.remote_base_url_placeholder": "http://127.0.0.1:8787",
   "dashboard.remote_base_url_required": "Add a server URL to continue.",
