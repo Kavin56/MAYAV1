@@ -32,6 +32,9 @@ fi
 echo "[runpod-start] Building MAYA server (so CORS and latest code are used)..."
 pnpm --filter maya-server build
 
+# Ensure the server exposes at least one workspace (RunPod root) so "Connect remote" works
+export MAYA_WORKSPACES="${MAYA_WORKSPACES:-/workspace}"
+
 echo "[runpod-start] Starting MAYA server in background..."
 pnpm --filter maya-server start &
 SERVER_PID=$!

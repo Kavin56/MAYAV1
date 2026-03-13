@@ -147,6 +147,7 @@ import {
   readOpenworkConnectInviteFromSearch,
   stripOpenworkConnectInviteFromUrl,
   createOpenworkServerClient,
+  DEFAULT_MAYA_SERVER_URL,
   fetchOpenworkServerToken,
   hydrateOpenworkServerSettingsFromEnv,
   migrateLegacyNgrokUrl,
@@ -2621,6 +2622,30 @@ export default function App() {
     }
     setDeepLinkRemoteWorkspaceDefaults(null);
   });
+
+  const openCreateRemoteWorkspaceWithDefaults = async () => {
+    const url =
+      normalizeOpenworkServerUrl(openworkServerSettings().urlOverride ?? "") ??
+      normalizeOpenworkServerUrl(DEFAULT_MAYA_SERVER_URL) ??
+      "";
+    if (url) {
+      try {
+        const token = await fetchOpenworkServerToken(url);
+        setDeepLinkRemoteWorkspaceDefaults({
+          openworkHostUrl: url,
+          openworkToken: token ?? undefined,
+          directory: "/workspace",
+        });
+      } catch {
+        setDeepLinkRemoteWorkspaceDefaults({
+          openworkHostUrl: url,
+          openworkToken: undefined,
+          directory: "/workspace",
+        });
+      }
+    }
+    workspaceStore.setCreateRemoteWorkspaceOpen(true);
+  };
 
   const editRemoteWorkspaceDefaults = createMemo(() => {
     const workspaceId = editRemoteWorkspaceId();
@@ -5100,7 +5125,7 @@ export default function App() {
       activateWorkspace: workspaceStore.activateWorkspace,
       testWorkspaceConnection: workspaceStore.testWorkspaceConnection,
       openCreateWorkspace: () => workspaceStore.setCreateWorkspaceOpen(true),
-      openCreateRemoteWorkspace: () => workspaceStore.setCreateRemoteWorkspaceOpen(true),
+      openCreateRemoteWorkspace: openCreateRemoteWorkspaceWithDefaults,
       importWorkspaceConfig: workspaceStore.importWorkspaceConfig,
       importingWorkspaceConfig: workspaceStore.importingWorkspaceConfig(),
       exportWorkspaceConfig: workspaceStore.exportWorkspaceConfig,
@@ -5297,7 +5322,7 @@ export default function App() {
     editWorkspaceConnection: openWorkspaceConnectionSettings,
     forgetWorkspace: workspaceStore.forgetWorkspace,
     openCreateWorkspace: () => workspaceStore.setCreateWorkspaceOpen(true),
-    openCreateRemoteWorkspace: () => workspaceStore.setCreateRemoteWorkspaceOpen(true),
+    openCreateRemoteWorkspace: openCreateRemoteWorkspaceWithDefaults,
     importWorkspaceConfig: workspaceStore.importWorkspaceConfig,
     importingWorkspaceConfig: workspaceStore.importingWorkspaceConfig(),
     exportWorkspaceConfig: workspaceStore.exportWorkspaceConfig,
