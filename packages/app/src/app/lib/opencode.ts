@@ -1,6 +1,7 @@
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 
+import { migrateLegacyNgrokUrl } from "./openwork-server";
 import { isTauriRuntime } from "../utils";
 
 type FieldsResult<T> =
@@ -120,6 +121,7 @@ export function unwrap<T>(result: FieldsResult<T>): NonNullable<T> {
 }
 
 export function createClient(baseUrl: string, directory?: string, auth?: OpencodeAuth) {
+  baseUrl = migrateLegacyNgrokUrl(baseUrl) || baseUrl;
   const headers: Record<string, string> = {};
   if (!isTauriRuntime()) {
     const authHeader = resolveAuthHeader(auth);
