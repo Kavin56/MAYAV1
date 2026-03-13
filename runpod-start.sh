@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
 # MAYA-V1 RunPod startup — no source build. Uses global openwork-orchestrator + FastAPI + Caddy + ngrok.
-# Pull from git and run: chmod +x runpod-start.sh && ./runpod-start.sh (requires .env with NGROK_AUTHTOKEN)
+# Pull from git and run: bash runpod-start.sh (requires .env with NGROK_AUTHTOKEN)
+echo "[MAYA] runpod-start.sh starting..."
 set -e
 
-echo "🚀 MAYA-V1 RunPod startup"
-[ -f .env ] && set -a && source .env && set +a
+echo "[MAYA] Loading .env..."
+if [ -f .env ]; then
+  set -a
+  source .env 2>/dev/null || true
+  set +a
+  echo "[MAYA] .env loaded."
+else
+  echo "[MAYA] No .env file in $(pwd). Create it with NGROK_AUTHTOKEN=your_token"
+fi
 mkdir -p logs tmp
 
 OPENWORK_WORKSPACE="${OPENWORK_WORKSPACE:-$(pwd)}"
@@ -14,9 +22,10 @@ PUBLIC_PORT="${PUBLIC_PORT:-8080}"
 MAYA_PYTHON_APP="${MAYA_PYTHON_APP:-src/main.py}"
 
 if [ -z "${NGROK_AUTHTOKEN:-}" ]; then
-  echo "❌ NGROK_AUTHTOKEN required (set in .env or env)."
+  echo "[MAYA] ERROR: NGROK_AUTHTOKEN required. Set it in .env or export it, then run again."
   exit 1
 fi
+echo "[MAYA] NGROK_AUTHTOKEN is set. Proceeding..."
 
 ensure_ngrok() {
   command -v ngrok >/dev/null 2>&1 && return 0
