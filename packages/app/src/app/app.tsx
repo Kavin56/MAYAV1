@@ -2647,6 +2647,21 @@ export default function App() {
     workspaceStore.setCreateRemoteWorkspaceOpen(true);
   };
 
+  const addRemoteWorkerInitialValues = createMemo(() => {
+    const fromDeepLink = deepLinkRemoteWorkspaceDefaults();
+    if (fromDeepLink) return fromDeepLink;
+    const url =
+      normalizeOpenworkServerUrl(openworkServerSettings().urlOverride ?? "") ??
+      normalizeOpenworkServerUrl(DEFAULT_MAYA_SERVER_URL) ??
+      "";
+    return {
+      openworkHostUrl: url,
+      openworkToken: openworkServerSettings().token ?? "",
+      directory: "/workspace",
+      displayName: "",
+    };
+  });
+
   const editRemoteWorkspaceDefaults = createMemo(() => {
     const workspaceId = editRemoteWorkspaceId();
     if (!workspaceId) return null;
@@ -5723,7 +5738,8 @@ export default function App() {
           setDeepLinkRemoteWorkspaceDefaults(null);
         }}
         onConfirm={(input) => workspaceStore.createRemoteWorkspaceFlow(input)}
-        initialValues={deepLinkRemoteWorkspaceDefaults() ?? undefined}
+        initialValues={addRemoteWorkerInitialValues()}
+        staticUrlAndToken={Boolean(addRemoteWorkerInitialValues().openworkHostUrl?.trim())}
         submitting={
           busy() &&
           (busyLabel() === "status.creating_workspace" || busyLabel() === "status.connecting")
