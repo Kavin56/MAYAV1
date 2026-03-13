@@ -1,136 +1,3 @@
-:#!/bin/bash
-set -e
-
-echo "🚀 MAYA RunPod Cloud Deployment Script"
-echo "======================================"
-echo "Deploying to RunPod with Browser Automation"
-echo "Gmail: surya.girishad@gmail.com"
-echo "======================================"
-
-# Colors for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
-}
-
-error() {
-    echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1${NC}"
-    exit 1
-}
-
-warning() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $1${NC}"
-}
-
-info() {
-    echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')] INFO: $1${NC}"
-}
-
-# Configuration
-RUNPOD_API_KEY="${RUNPOD_API_KEY:-}"
-RUNPOD_ENDPOINT_ID="${RUNPOD_ENDPOINT_ID:-}"
-GMAIL_USER="surya.girishad@gmail.com"
-GMAIL_PASS="Surya@2003"
-DOMAIN="${DOMAIN:-maya-automation.runpod.io}"
-
-# Validate configuration
-if [ -z "$RUNPOD_API_KEY" ]; then
-    error "RUNPOD_API_KEY not set. Please set: export RUNPOD_API_KEY=your_api_key"
-fi
-
-log "Starting MAYA RunPod deployment..."
-
-# Create deployment package
-log "Creating RunPod deployment package..."
-
-# Create main application structure
-mkdir -p {src/{controllers,services,utils,integrations,skills,models,middleware},config,logs,data,skills,temp,static,templates}
-
-# Create requirements.txt
-cat > requirements.txt << 'EOF'
-# Core dependencies
-fastapi==0.104.1
-uvicorn==0.24.0
-pydantic==2.5.0
-python-multipart==0.0.6
-
-# Browser automation
-playwright==1.40.0
-selenium==4.15.2
-webdriver-manager==4.0.1
-
-# Social media APIs
-tweepy==4.14.0
-instagrapi==2.0.0
-facebook-sdk==3.1.0
-linkedin-api==2.1.0
-
-# AI/ML
-openai==1.3.7
-anthropic==0.7.7
-google-generativeai==0.3.2
-transformers==4.35.2
-torch==2.1.1
-
-# Data processing
-pandas==2.1.3
-numpy==1.25.2
-scikit-learn==1.3.2
-
-# Database
-redis==5.0.1
-sqlalchemy==2.0.23
-alembic==1.12.1
-
-# Utilities
-python-dotenv==1.0.0
-requests==2.31.0
-aiohttp==3.9.1
-aiofiles==23.2.1
-celery==5.3.4
-
-# Logging
-loguru==0.7.2
-structlog==23.2.0
-
-# Security
-cryptography==41.0.7
-bcrypt==4.1.2
-jwt==1.3.1
-
-# Monitoring
-prometheus-client==0.19.0
-grafana-api==1.0.3
-
-# Cloud storage
-boto3==1.34.0
-google-cloud-storage==2.12.0
-azure-storage-blob==12.19.0
-
-# Image processing
-pillow==10.1.0
-opencv-python==4.8.1.78
-
-# Scheduling
-apscheduler==3.10.4
-croniter==2.0.1
-
-# Testing
-pytest==7.4.3
-pytest-asyncio==0.21.1
-httpx==0.25.2
-EOF
-
-# Create main application
-log "Creating main application..."
-
-# Main server application
-cat > src/main.py << 'EOF'
 #!/usr/bin/env python3
 """
 MAYA Orchestrator - Self-Evolving Digital Marketing Agent
@@ -205,6 +72,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger('MAYA')
+start_time = time.time()
 
 # Global variables
 RUNPOD_API_KEY = os.getenv('RUNPOD_API_KEY', 'demo_key')
@@ -1000,11 +868,10 @@ if __name__ == "__main__":
     logger.info("✅ RunPod GPU integration active")
     logger.info("✅ Self-evolution engine running")
     
-    # Run the server
+    # Run the server (use app directly when run as script: python3 src/main.py)
     uvicorn.run(
-        "main:app",
+        app,
         host="0.0.0.0",
         port=8000,
-        reload=False,
         log_level="info"
     )
