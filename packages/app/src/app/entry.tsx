@@ -3,7 +3,21 @@ import { GlobalSDKProvider } from "./context/global-sdk";
 import { GlobalSyncProvider } from "./context/global-sync";
 import { LocalProvider } from "./context/local";
 import { ServerProvider } from "./context/server";
+import { DEFAULT_MAYA_SERVER_URL } from "./lib/openwork-server";
 import { isTauriRuntime } from "./utils";
+
+function getStoredOpenworkUrl(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const raw = window.localStorage.getItem("openwork.server.urlOverride") ?? "";
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    const withProtocol = /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
+    return withProtocol.replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+}
 
 export default function AppEntry() {
   const defaultUrl = (() => {
@@ -24,6 +38,13 @@ export default function AppEntry() {
     // OpenCode is proxied at same-origin `/opencode`.
     if (import.meta.env.PROD && typeof window !== "undefined") {
       return `${window.location.origin}/opencode`;
+    }
+
+    // Dev: use stored or default MAYA server URL so health check and OpenCode use the same host (avoids 401 on /opencode/global/health).
+    const stored = getStoredOpenworkUrl();
+    const mayaBase = stored || (DEFAULT_MAYA_SERVER_URL?.trim() ?? "");
+    if (mayaBase) {
+      return `${mayaBase.replace(/\/+$/, "")}/opencode`;
     }
 
     // Dev fallback (Vite) - allow overriding for remote debugging.

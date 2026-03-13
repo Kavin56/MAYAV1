@@ -494,6 +494,30 @@ export default function App() {
     setOpenworkServerUrl(hostUrl || settingsUrl);
   });
 
+  // Bootstrap token when we have a server URL but no token (e.g. first load), so /capabilities and health get auth
+  createEffect(() => {
+    if (typeof window === "undefined") return;
+    const pref = startupPreference();
+    if (pref === "local") return;
+    const settings = openworkServerSettings();
+    const url =
+      normalizeOpenworkServerUrl(settings.urlOverride ?? "") ??
+      normalizeOpenworkServerUrl(DEFAULT_MAYA_SERVER_URL) ??
+      "";
+    const token = settings.token?.trim() ?? "";
+    if (!url || token) return;
+    let active = true;
+    fetchOpenworkServerToken(url).then((fetched) => {
+      if (!active) return;
+      if (fetched) {
+        updateOpenworkServerSettings({ ...openworkServerSettings(), urlOverride: url || undefined, token: fetched });
+      }
+    });
+    onCleanup(() => {
+      active = false;
+    });
+  });
+
   const checkOpenworkServer = async (
     url: string,
     token?: string,
@@ -2653,6 +2677,7 @@ export default function App() {
     const url =
       normalizeOpenworkServerUrl(openworkServerSettings().urlOverride ?? "") ??
       normalizeOpenworkServerUrl(DEFAULT_MAYA_SERVER_URL) ??
+      DEFAULT_MAYA_SERVER_URL ??
       "";
     return {
       openworkHostUrl: url,
