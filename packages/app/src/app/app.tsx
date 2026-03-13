@@ -5124,7 +5124,10 @@ export default function App() {
       connectingWorkspaceId: workspaceStore.connectingWorkspaceId(),
       activateWorkspace: workspaceStore.activateWorkspace,
       testWorkspaceConnection: workspaceStore.testWorkspaceConnection,
-      openCreateWorkspace: () => workspaceStore.setCreateWorkspaceOpen(true),
+      openCreateWorkspace: () =>
+        isTauriRuntime()
+          ? workspaceStore.setCreateWorkspaceOpen(true)
+          : openCreateRemoteWorkspaceWithDefaults(),
       openCreateRemoteWorkspace: openCreateRemoteWorkspaceWithDefaults,
       importWorkspaceConfig: workspaceStore.importWorkspaceConfig,
       importingWorkspaceConfig: workspaceStore.importingWorkspaceConfig(),
@@ -5321,7 +5324,10 @@ export default function App() {
     testWorkspaceConnection: workspaceStore.testWorkspaceConnection,
     editWorkspaceConnection: openWorkspaceConnectionSettings,
     forgetWorkspace: workspaceStore.forgetWorkspace,
-    openCreateWorkspace: () => workspaceStore.setCreateWorkspaceOpen(true),
+    openCreateWorkspace: () =>
+      isTauriRuntime()
+        ? workspaceStore.setCreateWorkspaceOpen(true)
+        : openCreateRemoteWorkspaceWithDefaults(),
     openCreateRemoteWorkspace: openCreateRemoteWorkspaceWithDefaults,
     importWorkspaceConfig: workspaceStore.importWorkspaceConfig,
     importingWorkspaceConfig: workspaceStore.importingWorkspaceConfig(),

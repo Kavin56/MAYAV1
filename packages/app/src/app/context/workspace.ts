@@ -24,6 +24,7 @@ import { unwrap } from "../lib/opencode";
 import {
   buildOpenworkWorkspaceBaseUrl,
   createOpenworkServerClient,
+  fetchOpenworkServerToken,
   migrateLegacyNgrokUrl,
   normalizeOpenworkServerUrl,
   OpenworkServerError,
@@ -487,14 +488,12 @@ export function createWorkspaceStore(options: {
     if (!workspace?.id) {
       throw new Error("OpenWork server did not return a worker.");
     }
-    const opencodeUpstreamBaseUrl = workspace.opencode?.baseUrl?.trim() ?? workspace.baseUrl?.trim() ?? "";
-    if (!opencodeUpstreamBaseUrl) {
-      throw new Error("OpenWork server did not provide an OpenCode URL.");
-    }
 
     const workspaceScopedBaseUrl =
       buildOpenworkWorkspaceBaseUrl(normalizedHostUrl, workspace.id) ?? workspaceBaseUrl;
-    const opencodeBaseUrl = `${workspaceScopedBaseUrl.replace(/\/+$/, "")}/opencode`;
+    const opencodeBaseUrl =
+      (workspace.opencode?.baseUrl?.trim() ?? workspace.baseUrl?.trim()) ||
+      `${workspaceScopedBaseUrl.replace(/\/+$/, "")}/opencode`;
     const opencodeAuth: OpencodeAuth | undefined = trimmedToken
       ? { token: trimmedToken, mode: "openwork" }
       : undefined;
@@ -1714,13 +1713,22 @@ export function createWorkspaceStore(options: {
 
     const run = (async () => {
     const hostUrl = normalizeOpenworkServerUrl(input.openworkHostUrl ?? "") ?? "";
-    const token = input.openworkToken?.trim() ?? "";
+    let token = input.openworkToken?.trim() ?? "";
     const directory = input.directory?.trim() ?? "";
     const displayName = input.displayName?.trim() || null;
 
     if (!hostUrl) {
       options.setError(t("app.error.remote_base_url_required", currentLocale()));
       return false;
+    }
+
+    if (!token) {
+      try {
+        const fetched = await fetchOpenworkServerToken(hostUrl);
+        if (fetched) token = fetched;
+      } catch {
+        // continue with empty token; resolveOpenworkHost will fail with clear error
+      }
     }
 
     options.setError(null);
