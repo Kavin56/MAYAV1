@@ -25,9 +25,10 @@ Then:
 
 ## Check from a browser
 
-- Health: `https://your-ngrok-url.ngrok-free.dev/health`  
-  (You may need header `ngrok-skip-browser-warning: true` on the free tier.)
-- Status: `https://your-ngrok-url.ngrok-free.dev/status` (with the token in `Authorization: Bearer <token>`).
+- **Root:** `https://your-ngrok-url.ngrok-free.dev/` → JSON with service info (no token needed).
+- **Health:** `https://your-ngrok-url.ngrok-free.dev/health` → `{"ok":true,...}` (no token needed).
+- **Status:** `https://your-ngrok-url.ngrok-free.dev/status` → requires **Authorization: Bearer &lt;token&gt;** (the one printed as "Token:" by the script). Without the token you get `401 Unauthorized` — that means the server is up and auth is working.
+- There is no `/token` URL — you **use** the token in the app’s Settings (MAYA server URL + Token). The app sends it in the header when calling `/status`, `/health`, etc.
 
 No RunPod API or extra services are required—only the MAYA server behind ngrok and the token in the app.
 

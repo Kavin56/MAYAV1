@@ -1093,6 +1093,16 @@ function serializeWorkspace(workspace: ServerConfig["workspaces"][number]) {
 function createRoutes(config: ServerConfig, approvals: ApprovalService, tokens: TokenService): Route[] {
   const routes: Route[] = [];
 
+  addRoute(routes, "GET", "/", "none", async () => {
+    return jsonResponse({
+      service: "maya-server",
+      version: SERVER_VERSION,
+      ok: true,
+      health: "/health",
+      status: "/status (requires Authorization: Bearer <token>)",
+    });
+  });
+
   addRoute(routes, "GET", "/health", "none", async () => {
     return jsonResponse({ ok: true, version: SERVER_VERSION, uptimeMs: Date.now() - config.startedAt });
   });
