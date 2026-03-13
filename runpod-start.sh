@@ -33,24 +33,31 @@ fi
 
 mkdir -p logs
 
-# ─── ngrok (expose MAYA server for frontend) ───
-# Use --pooling-enabled so the same URL can run on multiple Pods (ERR_NGROK_334 fix).
+# ─── ngrok (expose MAYA server for frontend) – optional, script continues if it fails ───
 if [ -n "$NGROK_AUTHTOKEN" ]; then
   if command -v ngrok >/dev/null 2>&1; then
     echo "🔗 Starting ngrok for port $MAYA_PORT..."
     if [ -n "$NGROK_DOMAIN" ]; then
       NGROK_URL="https://${NGROK_DOMAIN#https://}"
-      ngrok http "$MAYA_PORT" --url "$NGROK_URL" --pooling-enabled --authtoken "$NGROK_AUTHTOKEN" &
+      ( ngrok http "$MAYA_PORT" --url "$NGROK_URL" --pooling-enabled --authtoken "$NGROK_AUTHTOKEN" ) &
     else
-      ngrok http "$MAYA_PORT" --authtoken "$NGROK_AUTHTOKEN" &
+      ( ngrok http "$MAYA_PORT" --authtoken "$NGROK_AUTHTOKEN" ) &
     fi
     sleep 2
+    # If ngrok fails (e.g. ERR_NGROK_334), use RunPod HTTP proxy for port $MAYA_PORT instead
   else
-    echo "⚠️ ngrok not installed; install from https://ngrok.com/download"
+    echo "⚠️ ngrok not installed; use RunPod port $MAYA_PORT proxy to reach the server"
   fi
 fi
 
-# ─── MAYA server (Node) – frontend talks to this via ngrok ───
+# ─── Bun (MAYA server requires Bun, not Node) ───
+if ! command -v bun >/dev/null 2>&1; then
+  echo "📦 Installing Bun..."
+  curl -fsSL https://bun.sh/install | bash
+  export BUN_INSTALL="$HOME/.bun" PATH="$HOME/.bun/bin:$PATH"
+fi
+
+# ─── MAYA server – frontend talks to this (via ngrok or RunPod proxy) ───
 echo "📦 Building MAYA server..."
 if ! command -v pnpm >/dev/null 2>&1; then
   npm install -g pnpm
@@ -64,7 +71,7 @@ WORKSPACE_DIR="${MAYA_WORKSPACE:-$ROOT_DIR}"
 OPENCODE_URL=""
 if command -v opencode >/dev/null 2>&1; then
   echo "🔧 Starting OpenCode on 4096..."
-  opencode serve --host 127.0.0.1 --port 4096 &
+  opencode serve --hostname 127.0.0.1 --port 4096 &
   sleep 2
   OPENCODE_URL="http://127.0.0.1:4096"
 fi
@@ -79,7 +86,7 @@ SERVER_ARGS=(
 )
 [ -n "$OPENCODE_URL" ] && SERVER_ARGS+=(--opencode-base-url "$OPENCODE_URL" --opencode-directory "$WORKSPACE_DIR")
 
-(cd packages/server && node dist/cli.js "${SERVER_ARGS[@]}") &
+(cd packages/server && bun dist/cli.js "${SERVER_ARGS[@]}") &
 APP_PID=$!
 
 echo ""

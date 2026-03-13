@@ -49,3 +49,5 @@ That error means the same ngrok URL is already in use (e.g. another RunPod or yo
    Stop ngrok everywhere else that uses `unameliorative-regretably-kimberly.ngrok-free.dev` (other RunPod sessions, local terminal), then start again on this Pod.
 
 **Get your ngrok token:** [dashboard.ngrok.com → Your Authtoken](https://dashboard.ngrok.com/get-started/your-authtoken). Put it in `.env` as `NGROK_AUTHTOKEN=your_token`.
+
+**If ngrok keeps failing:** the script still starts the MAYA server. Use **RunPod’s HTTP proxy** for port **8787** (in the RunPod dashboard, open the proxy URL for 8787) and use that URL + token in the app instead of the ngrok URL.
