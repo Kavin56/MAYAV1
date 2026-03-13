@@ -11,6 +11,9 @@ cd "$ROOT_DIR"
 
 echo "🚀 MAYA-V1 RunPod startup (frontend + ngrok)"
 
+# Default ngrok URL (hardcoded)
+DEFAULT_NGROK_DOMAIN="unameliorative-regretably-kimberly.ngrok-free.dev"
+
 # Load .env
 if [ -f .env ]; then
   echo "📁 Loading .env..."
@@ -19,6 +22,7 @@ if [ -f .env ]; then
   source .env
   set +a
 fi
+NGROK_DOMAIN="${NGROK_DOMAIN:-$DEFAULT_NGROK_DOMAIN}"
 
 # Token for frontend (set in .env or we generate and print)
 MAYA_TOKEN="${MAYA_TOKEN:-}"

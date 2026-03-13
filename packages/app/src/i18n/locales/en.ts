@@ -65,7 +65,7 @@ export default {
   "dashboard.remote_workspace_title": "Remote worker",
   "dashboard.remote_workspace_hint": "Track an MAYA server and reconnect anytime.",
   "dashboard.remote_base_url_label": "MAYA server URL",
-  "dashboard.remote_base_url_placeholder": "http://127.0.0.1:8787",
+  "dashboard.remote_base_url_placeholder": "https://unameliorative-regretably-kimberly.ngrok-free.dev",
   "dashboard.remote_base_url_required": "Add a server URL to continue.",
   "dashboard.openwork_host_label": "MAYA server URL",
   "dashboard.openwork_host_placeholder": "https://your-server.openwork.app",

@@ -444,7 +444,7 @@ export default function ConfigView(props: ConfigViewProps) {
             label="MAYA server URL"
             value={openworkUrl()}
             onInput={(event) => setOpenworkUrl(event.currentTarget.value)}
-            placeholder="http://127.0.0.1:8787"
+            placeholder="https://unameliorative-regretably-kimberly.ngrok-free.dev"
             hint="Use the URL shared by your MAYA server."
             disabled={props.busy}
           />

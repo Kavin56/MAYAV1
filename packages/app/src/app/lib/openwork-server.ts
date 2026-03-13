@@ -444,6 +444,9 @@ export type OpenworkReloadEvent = {
 
 export const DEFAULT_OPENWORK_SERVER_PORT = 8787;
 
+/** Default MAYA server URL (ngrok) when no override is set. */
+export const DEFAULT_MAYA_SERVER_URL = "https://unameliorative-regretably-kimberly.ngrok-free.dev";
+
 const STORAGE_URL_OVERRIDE = "openwork.server.urlOverride";
 const STORAGE_PORT_OVERRIDE = "openwork.server.port";
 const STORAGE_TOKEN = "openwork.server.token";
@@ -590,9 +593,9 @@ export function stripOpenworkConnectInviteFromUrl(input: string) {
 export function readOpenworkServerSettings(): OpenworkServerSettings {
   if (typeof window === "undefined") return {};
   try {
-    const urlOverride = normalizeOpenworkServerUrl(
-      window.localStorage.getItem(STORAGE_URL_OVERRIDE) ?? "",
-    );
+    const storedUrl = window.localStorage.getItem(STORAGE_URL_OVERRIDE) ?? "";
+    const urlOverride =
+      normalizeOpenworkServerUrl(storedUrl) ?? normalizeOpenworkServerUrl(DEFAULT_MAYA_SERVER_URL) ?? undefined;
     const portRaw = window.localStorage.getItem(STORAGE_PORT_OVERRIDE) ?? "";
     const portOverride = portRaw ? Number(portRaw) : undefined;
     const token = window.localStorage.getItem(STORAGE_TOKEN) ?? undefined;
