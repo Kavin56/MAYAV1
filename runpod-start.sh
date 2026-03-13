@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # MAYA-V1 RunPod startup — no source build. Uses global openwork-orchestrator + FastAPI + Caddy + ngrok.
+# Pull from git and run: chmod +x runpod-start.sh && ./runpod-start.sh (requires .env with NGROK_AUTHTOKEN)
 set -e
 
 echo "🚀 MAYA-V1 RunPod startup"
