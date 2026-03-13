@@ -32,3 +32,20 @@ cd /workspace/MAYAV1 && git fetch origin dev && git reset --hard origin/dev && c
 ```
 
 *(Use this only if you’re okay discarding any local changes on the Pod.)*
+
+---
+
+## Ngrok setup (ERR_NGROK_334: “endpoint already online”)
+
+That error means the same ngrok URL is already in use (e.g. another RunPod or your laptop). Two options:
+
+1. **Use pooling (recommended)**  
+   The script now starts ngrok with `--pooling-enabled` so the **same URL** can serve multiple endpoints (e.g. several RunPods). **Pull the latest code** and run again:
+   ```bash
+   cd /workspace/MAYAV1 && git fetch origin dev && git reset --hard origin/dev && ./runpod-start.sh
+   ```
+
+2. **Use only one endpoint**  
+   Stop ngrok everywhere else that uses `unameliorative-regretably-kimberly.ngrok-free.dev` (other RunPod sessions, local terminal), then start again on this Pod.
+
+**Get your ngrok token:** [dashboard.ngrok.com → Your Authtoken](https://dashboard.ngrok.com/get-started/your-authtoken). Put it in `.env` as `NGROK_AUTHTOKEN=your_token`.

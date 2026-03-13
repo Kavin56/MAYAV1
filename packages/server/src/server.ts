@@ -1338,7 +1338,7 @@ function createRoutes(config: ServerConfig, approvals: ApprovalService, tokens: 
       workspaceId: workspace.id,
       action: "config.patch",
       summary: "Patch workspace config",
-      paths: [opencode ? opencodeConfigPath(workspace.path) : null, openwork ? openworkConfigPath(workspace.path) : null].filter(Boolean) as string[],
+      paths: [opencode ? opencodeConfigPath(workspace.path) : null, openwork ? mayaConfigPath(workspace.path) : null].filter(Boolean) as string[],
     });
 
     if (opencode) {
@@ -3145,7 +3145,7 @@ function createRoutes(config: ServerConfig, approvals: ApprovalService, tokens: 
       workspaceId: workspace.id,
       action: "config.import",
       summary: "Import workspace config",
-      paths: [opencodeConfigPath(workspace.path), openworkConfigPath(workspace.path)],
+      paths: [opencodeConfigPath(workspace.path), mayaConfigPath(workspace.path)],
     });
     await importWorkspace(workspace, body);
     await recordAudit(workspace.path, {
@@ -4445,7 +4445,7 @@ async function readOpencodeConfig(workspaceRoot: string): Promise<Record<string,
 }
 
 async function readOpenworkConfig(workspaceRoot: string): Promise<Record<string, unknown>> {
-  const path = openworkConfigPath(workspaceRoot);
+  const path = mayaConfigPath(workspaceRoot);
   if (!(await exists(path))) return {};
   try {
     const raw = await readFile(path, "utf8");
@@ -4515,7 +4515,7 @@ async function reloadOpencodeEngine(workspace: WorkspaceInfo): Promise<void> {
 }
 
 async function writeOpenworkConfig(workspaceRoot: string, payload: Record<string, unknown>, merge: boolean): Promise<void> {
-  const path = openworkConfigPath(workspaceRoot);
+  const path = mayaConfigPath(workspaceRoot);
   const next = merge ? { ...(await readOpenworkConfig(workspaceRoot)), ...payload } : payload;
   await ensureDir(join(workspaceRoot, ".opencode"));
   await writeFile(path, JSON.stringify(next, null, 2) + "\n", "utf8");

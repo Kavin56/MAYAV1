@@ -34,12 +34,13 @@ fi
 mkdir -p logs
 
 # ─── ngrok (expose MAYA server for frontend) ───
+# Use --pooling-enabled so the same URL can run on multiple Pods (ERR_NGROK_334 fix).
 if [ -n "$NGROK_AUTHTOKEN" ]; then
   if command -v ngrok >/dev/null 2>&1; then
     echo "🔗 Starting ngrok for port $MAYA_PORT..."
     if [ -n "$NGROK_DOMAIN" ]; then
       NGROK_URL="https://${NGROK_DOMAIN#https://}"
-      ngrok http "$MAYA_PORT" --authtoken "$NGROK_AUTHTOKEN" --url "$NGROK_URL" --pooling-enabled &
+      ngrok http "$MAYA_PORT" --url "$NGROK_URL" --pooling-enabled --authtoken "$NGROK_AUTHTOKEN" &
     else
       ngrok http "$MAYA_PORT" --authtoken "$NGROK_AUTHTOKEN" &
     fi
