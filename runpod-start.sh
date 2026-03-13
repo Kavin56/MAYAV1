@@ -34,6 +34,8 @@ pnpm --filter maya-server build
 
 # Ensure the server exposes at least one workspace (RunPod root) so "Connect remote" works
 export MAYA_WORKSPACES="${MAYA_WORKSPACES:-/workspace}"
+# Allow browser (e.g. localhost:5173) to call API and avoid CORS preflight failures
+export MAYA_CORS_ORIGINS="${MAYA_CORS_ORIGINS:-*}"
 
 echo "[runpod-start] Starting MAYA server in background..."
 pnpm --filter maya-server start &

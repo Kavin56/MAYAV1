@@ -104,7 +104,11 @@ export function ServerProvider(props: ParentProps & { defaultUrl: string }) {
 
   const readOpenworkToken = () => {
     try {
-      return (window.localStorage.getItem("maya.server.token") ?? "").trim();
+      return (
+        (window.localStorage.getItem("maya.server.token") ??
+          window.localStorage.getItem("openwork.server.token") ??
+          "").trim()
+      );
     } catch {
       return "";
     }
@@ -114,10 +118,16 @@ export function ServerProvider(props: ParentProps & { defaultUrl: string }) {
     if (!url) return false;
     const baseUrl = migrateLegacyNgrokUrl(url) || url;
     const token = readOpenworkToken();
-    const headers = token && baseUrl.includes("/opencode") ? { Authorization: `Bearer ${token}` } : undefined;
+    const headers: Record<string, string> = {};
+    if (token && baseUrl.includes("/opencode")) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    if (/ngrok-free\.dev|ngrok\.io/i.test(baseUrl)) {
+      headers["ngrok-skip-browser-warning"] = "true";
+    }
     const client = createOpencodeClient({
       baseUrl,
-      headers,
+      headers: Object.keys(headers).length ? headers : undefined,
       signal: AbortSignal.timeout(3000),
       fetch: isTauriRuntime() ? tauriFetch : undefined,
     });
