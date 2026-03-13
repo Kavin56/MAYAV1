@@ -444,8 +444,11 @@ export type OpenworkReloadEvent = {
 
 export const DEFAULT_OPENWORK_SERVER_PORT = 8787;
 
-/** Default MAYA server URL (ngrok) when no override is set. */
+/** Default MAYA server URL (ngrok). Used when no override is set and to migrate old ngrok URLs. */
 export const DEFAULT_MAYA_SERVER_URL = "https://unameliorative-regretably-kimberly.ngrok-free.dev";
+
+/** Old ngrok subdomain to migrate from (frontend used this before). */
+const LEGACY_NGROK_SUBDOMAIN = "nondetonating-cecile-nongrounded.ngrok-free.dev";
 
 const STORAGE_URL_OVERRIDE = "openwork.server.urlOverride";
 const STORAGE_PORT_OVERRIDE = "openwork.server.port";
@@ -593,9 +596,18 @@ export function stripOpenworkConnectInviteFromUrl(input: string) {
 export function readOpenworkServerSettings(): OpenworkServerSettings {
   if (typeof window === "undefined") return {};
   try {
-    const storedUrl = window.localStorage.getItem(STORAGE_URL_OVERRIDE) ?? "";
-    const urlOverride =
-      normalizeOpenworkServerUrl(storedUrl) ?? normalizeOpenworkServerUrl(DEFAULT_MAYA_SERVER_URL) ?? undefined;
+    let storedUrl = window.localStorage.getItem(STORAGE_URL_OVERRIDE) ?? "";
+    let urlOverride = normalizeOpenworkServerUrl(storedUrl);
+
+    // Migrate old ngrok URL to current default so frontend uses the right endpoint
+    if (urlOverride && urlOverride.toLowerCase().includes(LEGACY_NGROK_SUBDOMAIN)) {
+      urlOverride = normalizeOpenworkServerUrl(DEFAULT_MAYA_SERVER_URL) ?? urlOverride;
+      window.localStorage.setItem(STORAGE_URL_OVERRIDE, urlOverride);
+    }
+    if (!urlOverride) {
+      urlOverride = normalizeOpenworkServerUrl(DEFAULT_MAYA_SERVER_URL) ?? null;
+    }
+
     const portRaw = window.localStorage.getItem(STORAGE_PORT_OVERRIDE) ?? "";
     const portOverride = portRaw ? Number(portRaw) : undefined;
     const token = window.localStorage.getItem(STORAGE_TOKEN) ?? undefined;
