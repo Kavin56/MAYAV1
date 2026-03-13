@@ -2,6 +2,7 @@ import { createContext, createEffect, createMemo, createSignal, onCleanup, useCo
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 
+import { migrateLegacyNgrokUrl } from "../lib/openwork-server";
 import { isTauriRuntime } from "../utils";
 
 export function normalizeServerUrl(input: string) {
@@ -77,10 +78,12 @@ export function ServerProvider(props: ParentProps & { defaultUrl: string }) {
     const storedList = readStoredList();
     const storedActive = normalizeServerUrl(readStoredActive());
 
-    const initialList = storedList.length ? storedList : fallback ? [fallback] : [];
-    const initialActive = storedActive || initialList[0] || fallback || "";
+    const rawList = storedList.length ? storedList : fallback ? [fallback] : [];
+    const rawActive = storedActive || rawList[0] || fallback || "";
+    const initialList = rawList.map((u) => migrateLegacyNgrokUrl(u) || u).filter(Boolean);
+    const initialActive = migrateLegacyNgrokUrl(rawActive) || rawActive;
 
-    setList(initialList);
+    setList(initialList.length ? initialList : rawList);
     setActiveRaw(initialActive);
     setReady(true);
   });
@@ -97,7 +100,7 @@ export function ServerProvider(props: ParentProps & { defaultUrl: string }) {
     }
   });
 
-  const activeUrl = createMemo(() => active());
+  const activeUrl = createMemo(() => migrateLegacyNgrokUrl(active()) || active());
 
   const readOpenworkToken = () => {
     try {
@@ -109,10 +112,11 @@ export function ServerProvider(props: ParentProps & { defaultUrl: string }) {
 
   const checkHealth = async (url: string) => {
     if (!url) return false;
+    const baseUrl = migrateLegacyNgrokUrl(url) || url;
     const token = readOpenworkToken();
-    const headers = token && url.includes("/opencode") ? { Authorization: `Bearer ${token}` } : undefined;
+    const headers = token && baseUrl.includes("/opencode") ? { Authorization: `Bearer ${token}` } : undefined;
     const client = createOpencodeClient({
-      baseUrl: url,
+      baseUrl,
       headers,
       signal: AbortSignal.timeout(3000),
       fetch: isTauriRuntime() ? tauriFetch : undefined,

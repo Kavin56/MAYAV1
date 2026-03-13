@@ -10,6 +10,7 @@ import {
   type ParentProps,
 } from "solid-js";
 
+import { migrateLegacyNgrokUrl } from "../lib/openwork-server";
 import { usePlatform } from "./platform";
 import { useServer } from "./server";
 
@@ -35,7 +36,7 @@ export function GlobalSDKProvider(props: ParentProps) {
   const [url, setUrl] = createSignal(server.url);
 
   createEffect(() => {
-    const baseUrl = server.url;
+    const baseUrl = migrateLegacyNgrokUrl(server.url) || server.url;
     const isHealthy = server.healthy() === true;
 
     const token = (() => {

@@ -17,6 +17,18 @@ check_health() {
   fi
 }
 
+# Free port so the new server can bind (avoid EADDRINUSE from a previous run)
+if command -v fuser >/dev/null 2>&1; then
+  fuser -k "${MAYA_PORT}/tcp" 2>/dev/null || true
+  sleep 1
+elif command -v lsof >/dev/null 2>&1; then
+  PIDS=$(lsof -ti ":${MAYA_PORT}" 2>/dev/null) || true
+  if [ -n "$PIDS" ]; then
+    echo "$PIDS" | xargs -r kill 2>/dev/null || true
+    sleep 1
+  fi
+fi
+
 echo "[runpod-start] Starting MAYA server in background..."
 pnpm --filter maya-server start &
 SERVER_PID=$!
@@ -56,7 +68,7 @@ fi
 
 echo "[runpod-start] Starting ngrok..."
 if [ -n "$NGROK_DOMAIN" ]; then
-  exec ngrok http "$MAYA_PORT" --domain="$NGROK_DOMAIN"
+  exec ngrok http "$MAYA_PORT" --url="https://${NGROK_DOMAIN}"
 else
   exec ngrok http "$MAYA_PORT"
 fi
