@@ -27,6 +27,9 @@ if [ -z "${NGROK_AUTHTOKEN:-}" ]; then
 fi
 echo "[MAYA] NGROK_AUTHTOKEN is set. Proceeding..."
 
+# Write OpenWork client token for GET /token (set OPENWORK_TOKEN in .env to expose it)
+python3 -c "import json,os; open('tmp/token.json','w').write(json.dumps({'token': os.environ.get('OPENWORK_TOKEN','')}))" 2>/dev/null || echo '{"token":""}' > tmp/token.json
+
 ensure_ngrok() {
   command -v ngrok >/dev/null 2>&1 && return 0
   echo "📦 Installing ngrok..."
@@ -74,6 +77,10 @@ start_proxy() {
   mkdir -p tmp
   cat > tmp/Caddyfile <<EOF
 :${PUBLIC_PORT} {
+  handle /token {
+    rewrite * /token.json
+    file_server root tmp
+  }
   handle /maya/* {
     uri strip_prefix /maya
     reverse_proxy 127.0.0.1:${MAYA_PYTHON_PORT}
