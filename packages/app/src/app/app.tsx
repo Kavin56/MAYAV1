@@ -147,7 +147,9 @@ import {
   readOpenworkConnectInviteFromSearch,
   stripOpenworkConnectInviteFromUrl,
   createOpenworkServerClient,
+  fetchOpenworkServerToken,
   hydrateOpenworkServerSettingsFromEnv,
+  migrateLegacyNgrokUrl,
   normalizeOpenworkServerUrl,
   readOpenworkServerSettings,
   writeOpenworkServerSettings,
@@ -373,6 +375,7 @@ export default function App() {
   const [openworkServerHostInfo, setOpenworkServerHostInfo] = createSignal<OpenworkServerInfo | null>(null);
   const [openworkServerDiagnostics, setOpenworkServerDiagnostics] = createSignal<OpenworkServerDiagnostics | null>(null);
   const [openworkReconnectBusy, setOpenworkReconnectBusy] = createSignal(false);
+  const [autoOpenworkReconnectUrl, setAutoOpenworkReconnectUrl] = createSignal<string | null>(null);
   const [opencodeRouterInfoState, setOpenCodeRouterInfoState] = createSignal<OpenCodeRouterInfo | null>(null);
   const [orchestratorStatusState, setOrchestratorStatusState] = createSignal<OrchestratorStatus | null>(null);
   const [openworkAuditEntries, setOpenworkAuditEntries] = createSignal<OpenworkAuditEntry[]>([]);
@@ -2707,7 +2710,23 @@ export default function App() {
         return false;
       }
 
-      const result = await checkOpenworkServer(url, auth.token, auth.hostToken);
+      let token = auth.token;
+      if (!token) {
+        try {
+          const fetched = await fetchOpenworkServerToken(url);
+          if (fetched) {
+            token = fetched;
+            const settings = openworkServerSettings();
+            if ((settings.token?.trim() ?? "") !== fetched) {
+              updateOpenworkServerSettings({ ...settings, token: fetched });
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const result = await checkOpenworkServer(url, token, auth.hostToken);
       setOpenworkServerStatus(result.status);
       setOpenworkServerCapabilities(result.capabilities);
       setOpenworkServerCheckedAt(Date.now());
@@ -2716,6 +2735,17 @@ export default function App() {
       setOpenworkReconnectBusy(false);
     }
   };
+
+  createEffect(() => {
+    const url = openworkServerBaseUrl().trim();
+    if (!url) return;
+    if (openworkReconnectBusy()) return;
+    const status = openworkServerStatus();
+    if (status === "connected" || status === "limited") return;
+    if (autoOpenworkReconnectUrl() === url) return;
+    setAutoOpenworkReconnectUrl(url);
+    void reconnectOpenworkServer();
+  });
 
   const openWorkspaceConnectionSettings = (workspaceId: string) => {
     const workspace = workspaceStore.workspaces().find((item) => item.id === workspaceId) ?? null;
@@ -4182,7 +4212,15 @@ export default function App() {
       try {
         const storedBaseUrl = window.localStorage.getItem("maya.baseUrl");
         if (storedBaseUrl) {
-          setBaseUrl(storedBaseUrl);
+          const migrated = migrateLegacyNgrokUrl(storedBaseUrl);
+          setBaseUrl(migrated);
+          if (migrated !== storedBaseUrl) {
+            try {
+              window.localStorage.setItem("maya.baseUrl", migrated);
+            } catch {
+              // ignore
+            }
+          }
         }
 
         const storedClientDir = window.localStorage.getItem(
@@ -4985,7 +5023,7 @@ export default function App() {
       view: currentView(),
       setView,
       startupPreference: startupPreference(),
-      baseUrl: baseUrl(),
+      baseUrl: migrateLegacyNgrokUrl(baseUrl()) || baseUrl(),
       clientConnected: Boolean(client()),
       busy: busy(),
       busyHint: busyHint(),

@@ -24,6 +24,7 @@ import { unwrap } from "../lib/opencode";
 import {
   buildOpenworkWorkspaceBaseUrl,
   createOpenworkServerClient,
+  migrateLegacyNgrokUrl,
   normalizeOpenworkServerUrl,
   OpenworkServerError,
   type OpenworkServerClient,
@@ -631,7 +632,7 @@ export function createWorkspaceStore(options: {
         setProjectDir(info.projectDir);
       }
       if (info.baseUrl && syncLocalState) {
-        options.setBaseUrl(info.baseUrl);
+        options.setBaseUrl(migrateLegacyNgrokUrl(info.baseUrl));
       }
 
       if (
@@ -646,7 +647,7 @@ export function createWorkspaceStore(options: {
           lastEngineReconnectAt = now;
           reconnectingEngine = true;
           connectToServer(
-            info.baseUrl,
+            migrateLegacyNgrokUrl(info.baseUrl),
             info.projectDir ?? undefined,
             { reason: "engine-refresh" },
             auth ?? undefined,
@@ -1185,6 +1186,7 @@ export function createWorkspaceStore(options: {
     auth?: OpencodeAuth,
     connectOptions?: { quiet?: boolean; navigate?: boolean },
   ) {
+    nextBaseUrl = migrateLegacyNgrokUrl(nextBaseUrl);
     const requestKey = connectRequestKey(nextBaseUrl, directory, context, auth, connectOptions);
     const existing = connectInFlightByKey.get(requestKey);
     if (existing) {
@@ -2847,7 +2849,7 @@ export function createWorkspaceStore(options: {
           setWorkspaceConfigLoaded(true);
           setAuthorizedDirs([]);
           if (active.baseUrl) {
-            options.setBaseUrl(active.baseUrl);
+            options.setBaseUrl(migrateLegacyNgrokUrl(active.baseUrl));
           }
         } else {
           setProjectDir(active.path);
@@ -2869,7 +2871,7 @@ export function createWorkspaceStore(options: {
 
     const info = engine();
     if (info?.baseUrl) {
-      options.setBaseUrl(info.baseUrl);
+      options.setBaseUrl(migrateLegacyNgrokUrl(info.baseUrl));
     }
 
     const activeWorkspace = activeWorkspaceInfo();

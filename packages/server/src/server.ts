@@ -1093,22 +1093,18 @@ function serializeWorkspace(workspace: ServerConfig["workspaces"][number]) {
 function createRoutes(config: ServerConfig, approvals: ApprovalService, tokens: TokenService): Route[] {
   const routes: Route[] = [];
 
-  addRoute(routes, "GET", "/", "none", async () => {
-    return jsonResponse({
-      service: "maya-server",
-      version: SERVER_VERSION,
-      ok: true,
-      health: "/health",
-      status: "/status (requires Authorization: Bearer <token>)",
-    });
-  });
-
   addRoute(routes, "GET", "/health", "none", async () => {
     return jsonResponse({ ok: true, version: SERVER_VERSION, uptimeMs: Date.now() - config.startedAt });
   });
 
   addRoute(routes, "GET", "/w/:id/health", "none", async () => {
     return jsonResponse({ ok: true, version: SERVER_VERSION, uptimeMs: Date.now() - config.startedAt });
+  });
+
+  // Convenience endpoint for deployments fronted by a public URL (e.g. ngrok).
+  // The desktop/web UI can fetch this once and persist it to connect without manual token entry.
+  addRoute(routes, "GET", "/token", "none", async () => {
+    return jsonResponse({ ok: true, token: config.token });
   });
 
   addRoute(routes, "GET", "/ui", "none", async () => {
@@ -1348,7 +1344,7 @@ function createRoutes(config: ServerConfig, approvals: ApprovalService, tokens: 
       workspaceId: workspace.id,
       action: "config.patch",
       summary: "Patch workspace config",
-      paths: [opencode ? opencodeConfigPath(workspace.path) : null, openwork ? mayaConfigPath(workspace.path) : null].filter(Boolean) as string[],
+      paths: [opencode ? opencodeConfigPath(workspace.path) : null, openwork ? openworkConfigPath(workspace.path) : null].filter(Boolean) as string[],
     });
 
     if (opencode) {
@@ -3155,7 +3151,7 @@ function createRoutes(config: ServerConfig, approvals: ApprovalService, tokens: 
       workspaceId: workspace.id,
       action: "config.import",
       summary: "Import workspace config",
-      paths: [opencodeConfigPath(workspace.path), mayaConfigPath(workspace.path)],
+      paths: [opencodeConfigPath(workspace.path), openworkConfigPath(workspace.path)],
     });
     await importWorkspace(workspace, body);
     await recordAudit(workspace.path, {
@@ -4455,7 +4451,7 @@ async function readOpencodeConfig(workspaceRoot: string): Promise<Record<string,
 }
 
 async function readOpenworkConfig(workspaceRoot: string): Promise<Record<string, unknown>> {
-  const path = mayaConfigPath(workspaceRoot);
+  const path = openworkConfigPath(workspaceRoot);
   if (!(await exists(path))) return {};
   try {
     const raw = await readFile(path, "utf8");
@@ -4525,7 +4521,7 @@ async function reloadOpencodeEngine(workspace: WorkspaceInfo): Promise<void> {
 }
 
 async function writeOpenworkConfig(workspaceRoot: string, payload: Record<string, unknown>, merge: boolean): Promise<void> {
-  const path = mayaConfigPath(workspaceRoot);
+  const path = openworkConfigPath(workspaceRoot);
   const next = merge ? { ...(await readOpenworkConfig(workspaceRoot)), ...payload } : payload;
   await ensureDir(join(workspaceRoot, ".opencode"));
   await writeFile(path, JSON.stringify(next, null, 2) + "\n", "utf8");

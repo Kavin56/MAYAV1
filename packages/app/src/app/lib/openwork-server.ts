@@ -450,6 +450,17 @@ export const DEFAULT_MAYA_SERVER_URL = "https://unameliorative-regretably-kimber
 /** Old ngrok subdomain to migrate from (frontend used this before). */
 const LEGACY_NGROK_SUBDOMAIN = "nondetonating-cecile-nongrounded.ngrok-free.dev";
 
+/** Replace legacy ngrok host with current default in any URL string. */
+export function migrateLegacyNgrokUrl(url: string | null | undefined): string {
+  if (!url || typeof url !== "string") return url ?? "";
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.toLowerCase().includes(LEGACY_NGROK_SUBDOMAIN)) {
+    return trimmed.replace(new RegExp(LEGACY_NGROK_SUBDOMAIN.replace(/\./g, "\\."), "gi"), "unameliorative-regretably-kimberly.ngrok-free.dev");
+  }
+  return trimmed;
+}
+
 const STORAGE_URL_OVERRIDE = "openwork.server.urlOverride";
 const STORAGE_PORT_OVERRIDE = "openwork.server.port";
 const STORAGE_TOKEN = "openwork.server.token";
@@ -892,6 +903,16 @@ async function requestJsonRaw<T>(
   }
 
   return { ok: response.ok, status: response.status, json };
+}
+
+export async function fetchOpenworkServerToken(baseUrl: string): Promise<string | null> {
+  const normalized = baseUrl.replace(/\/+$/, "");
+  const result = await requestJsonRaw<{ ok?: boolean; token?: string }>(normalized, "/token", {
+    method: "GET",
+    timeoutMs: 4_000,
+  });
+  const token = typeof result.json?.token === "string" ? result.json.token.trim() : "";
+  return token || null;
 }
 
 async function requestMultipartRaw(
