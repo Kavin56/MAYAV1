@@ -29,6 +29,9 @@ elif command -v lsof >/dev/null 2>&1; then
   fi
 fi
 
+echo "[runpod-start] Building MAYA server (so CORS and latest code are used)..."
+pnpm --filter maya-server build
+
 echo "[runpod-start] Starting MAYA server in background..."
 pnpm --filter maya-server start &
 SERVER_PID=$!
