@@ -548,7 +548,19 @@ export default function App() {
       if (busy) return;
       busy = true;
       try {
-        const result = await checkOpenworkServer(url, token, hostToken);
+        let currentToken = token;
+        if (!currentToken) {
+          try {
+            const fetched = await fetchOpenworkServerToken(url);
+            if (fetched) {
+              updateOpenworkServerSettings({ ...openworkServerSettings(), token: fetched });
+              currentToken = fetched;
+            }
+          } catch {
+            // ignore
+          }
+        }
+        const result = await checkOpenworkServer(url, currentToken, hostToken);
         if (!active) return;
         setOpenworkServerStatus(result.status);
         setOpenworkServerCapabilities(result.capabilities);

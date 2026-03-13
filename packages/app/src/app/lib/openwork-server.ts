@@ -617,6 +617,9 @@ export function readOpenworkServerSettings(): OpenworkServerSettings {
     }
     if (!urlOverride) {
       urlOverride = normalizeOpenworkServerUrl(DEFAULT_MAYA_SERVER_URL) ?? null;
+      if (urlOverride) {
+        window.localStorage.setItem(STORAGE_URL_OVERRIDE, urlOverride);
+      }
     }
 
     const portRaw = window.localStorage.getItem(STORAGE_PORT_OVERRIDE) ?? "";
@@ -768,6 +771,14 @@ export class OpenworkServerError extends Error {
   }
 }
 
+/** ngrok free tier shows an interstitial unless this header is sent; add it for ngrok URLs so API calls get JSON. */
+function ngrokSkipBrowserWarningHeaders(url: string): Record<string, string> {
+  if (/ngrok-free\.dev|ngrok\.io/i.test(url)) {
+    return { "ngrok-skip-browser-warning": "true" };
+  }
+  return {};
+}
+
 function buildHeaders(
   token?: string,
   hostToken?: string,
@@ -853,12 +864,13 @@ async function requestJson<T>(
 ): Promise<T> {
   const url = `${baseUrl}${path}`;
   const fetchImpl = resolveFetch();
+  const headers = { ...buildHeaders(options.token, options.hostToken), ...ngrokSkipBrowserWarningHeaders(url) };
   const response = await fetchWithTimeout(
     fetchImpl,
     url,
     {
       method: options.method ?? "GET",
-      headers: buildHeaders(options.token, options.hostToken),
+      headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
     },
     options.timeoutMs ?? DEFAULT_OPENWORK_SERVER_TIMEOUT_MS,
@@ -883,12 +895,13 @@ async function requestJsonRaw<T>(
 ): Promise<RawJsonResponse<T>> {
   const url = `${baseUrl}${path}`;
   const fetchImpl = resolveFetch();
+  const headers = { ...buildHeaders(options.token, options.hostToken), ...ngrokSkipBrowserWarningHeaders(url) };
   const response = await fetchWithTimeout(
     fetchImpl,
     url,
     {
       method: options.method ?? "GET",
-      headers: buildHeaders(options.token, options.hostToken),
+      headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
     },
     options.timeoutMs ?? DEFAULT_OPENWORK_SERVER_TIMEOUT_MS,
@@ -922,12 +935,13 @@ async function requestMultipartRaw(
 ): Promise<{ ok: boolean; status: number; text: string }>{
   const url = `${baseUrl}${path}`;
   const fetchImpl = resolveFetch();
+  const headers = { ...buildAuthHeaders(options.token, options.hostToken), ...ngrokSkipBrowserWarningHeaders(url) };
   const response = await fetchWithTimeout(
     fetchImpl,
     url,
     {
       method: options.method ?? "POST",
-      headers: buildAuthHeaders(options.token, options.hostToken),
+      headers,
       body: options.body,
     },
     options.timeoutMs ?? DEFAULT_OPENWORK_SERVER_TIMEOUT_MS,
@@ -943,12 +957,13 @@ async function requestBinary(
 ): Promise<{ data: ArrayBuffer; contentType: string | null; filename: string | null }>{
   const url = `${baseUrl}${path}`;
   const fetchImpl = resolveFetch();
+  const headers = { ...buildAuthHeaders(options.token, options.hostToken), ...ngrokSkipBrowserWarningHeaders(url) };
   const response = await fetchWithTimeout(
     fetchImpl,
     url,
     {
       method: options.method ?? "GET",
-      headers: buildAuthHeaders(options.token, options.hostToken),
+      headers,
     },
     options.timeoutMs ?? DEFAULT_OPENWORK_SERVER_TIMEOUT_MS,
   );
