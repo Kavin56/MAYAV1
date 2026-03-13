@@ -22,6 +22,9 @@ logs/
 build_output.log
 _tmp_*
 
+# Large server binary (build artifact, >50MB)
+packages/server/cli
+
 # Env
 .env
 .env.*
